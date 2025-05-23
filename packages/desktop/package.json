@@ -11,7 +11,8 @@
     "test": "pnpm run build && node --test dist/test/db.test.js",
     "start": "tsc && electron dist/main.js",
     "package": "tsc && electron-builder",
-    "rebuild": "electron-rebuild"
+    "rebuild": "electron-rebuild",
+    "prebuild": "npx prebuildify --napi --strip"
   },
   "devDependencies": {
     "@types/node": "^20.11.16",

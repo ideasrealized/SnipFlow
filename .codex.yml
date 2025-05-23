@@ -1,0 +1,33 @@
+# Codex configuration for SnipFlow
+name: snipflow-development
+
+setupCommands:
+  - name: Install dependencies (with network access)
+    command: |
+      cd packages/desktop
+      pnpm install --frozen-lockfile
+  
+  - name: Rebuild native modules for Electron
+    command: |
+      cd packages/desktop
+      pnpm exec electron-rebuild -w better-sqlite3
+  
+  - name: Build TypeScript
+    command: |
+      cd packages/desktop
+      pnpm run build
+
+testCommand: |
+  cd packages/desktop
+  pnpm test
+
+services:
+  - name: snipflow-app
+    command: |
+      cd packages/desktop
+      npx pnpm dev
+    background: true
+
+environment:
+  NODE_ENV: development
+  ELECTRON_IS_DEV: "1" 
