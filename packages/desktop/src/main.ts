@@ -120,6 +120,26 @@ ipcMain.handle('delete-snippet', (_e: any, id: number) => {
   return db.getSnippets();
 });
 
+ipcMain.handle('list-chains', () => db.getChains());
+ipcMain.handle('create-chain', (_e: any, name: string, nodes: db.ChainNode[]) => {
+  db.createChain(name, nodes);
+  return db.getChains();
+});
+ipcMain.handle(
+  'update-chain',
+  (_e: any, id: number, name: string, nodes: db.ChainNode[]) => {
+    db.updateChain(id, name, nodes);
+    return db.getChains();
+  }
+);
+ipcMain.handle('delete-chain', (_e: any, id: number) => {
+  db.deleteChain(id);
+  return db.getChains();
+});
+ipcMain.handle('get-chain-by-name', (_e: any, name: string) => {
+  return db.getChainByName(name);
+});
+
 ipcMain.on('hide-overlay', () => {
   if (overlayWindow) {
     overlayWindow.hide();
