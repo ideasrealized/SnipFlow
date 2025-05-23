@@ -4,12 +4,6 @@ import { join } from 'path';
 const DB_PATH = join(__dirname, '..', 'snippets.db');
 const db = new Database(DB_PATH);
 
-// Prepared statements for performance and security
-const insertSnippet = db.prepare('INSERT INTO snippets(content) VALUES (?)');
-const updateSnippetStmt = db.prepare('UPDATE snippets SET content = ? WHERE id = ?');
-const deleteSnippetStmt = db.prepare('DELETE FROM snippets WHERE id = ?');
-const getSnippetsStmt = db.prepare('SELECT id, content FROM snippets ORDER BY id');
-
 export interface Snippet {
   id: number;
   content: string;
@@ -21,6 +15,15 @@ export function init() {
     content TEXT NOT NULL
   )`);
 }
+
+// Initialize database first
+init();
+
+// Prepared statements for performance and security (after table creation)
+const insertSnippet = db.prepare('INSERT INTO snippets(content) VALUES (?)');
+const updateSnippetStmt = db.prepare('UPDATE snippets SET content = ? WHERE id = ?');
+const deleteSnippetStmt = db.prepare('DELETE FROM snippets WHERE id = ?');
+const getSnippetsStmt = db.prepare('SELECT id, content FROM snippets ORDER BY id');
 
 export function getSnippets(): Snippet[] {
   return getSnippetsStmt.all() as Snippet[];
@@ -37,6 +40,3 @@ export function updateSnippet(id: number, content: string): void {
 export function deleteSnippet(id: number): void {
   deleteSnippetStmt.run(id);
 }
-
-// Initialize database
-init();
