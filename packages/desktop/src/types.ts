@@ -9,4 +9,6 @@ export interface SnippetApi {
   deleteChain(id: number): Promise<any>;
   getChainByName(name: string): Promise<any>;
   hideOverlay(): void;
+  getErrorLog(): Promise<string>;
+  exportDiagnostics(): Promise<string>;
 }

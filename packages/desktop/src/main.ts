@@ -1,11 +1,24 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, screen } from 'electron';
 import { join } from 'path';
-import { homedir } from 'os';
 import * as db from './db';
+import { logger } from './logger';
+import { initErrorTracking, withRetry } from './error-tracker';
+import { exportDiagnostics } from './diagnostics';
 
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let mouseCheckInterval: NodeJS.Timeout | null = null;
+
+function handle(channel: string, fn: (...args: any[]) => any) {
+  ipcMain.handle(channel, async (_e, ...args) => {
+    const start = Date.now();
+    try {
+      return await withRetry(() => Promise.resolve(fn(...args)), { retries: 3 });
+    } finally {
+      logger.perf(`ipc.${channel}: ${Date.now() - start}ms`);
+    }
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -78,6 +91,8 @@ function isMouseOverOverlay(): boolean {
 }
 
 app.whenReady().then(() => {
+  initErrorTracking();
+  logger.info('Application starting');
   createWindow();
   createOverlayWindow();
 
@@ -106,39 +121,37 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-ipcMain.handle('list-snippets', () => db.getSnippets());
-ipcMain.handle('create-snippet', (_e: any, content: string) => {
+handle('list-snippets', () => db.getSnippets());
+handle('create-snippet', (content: string) => {
   db.createSnippet(content);
   return db.getSnippets();
 });
-ipcMain.handle('update-snippet', (_e: any, id: number, content: string) => {
+handle('update-snippet', (id: number, content: string) => {
   db.updateSnippet(id, content);
   return db.getSnippets();
 });
-ipcMain.handle('delete-snippet', (_e: any, id: number) => {
+handle('delete-snippet', (id: number) => {
   db.deleteSnippet(id);
   return db.getSnippets();
 });
 
-ipcMain.handle('list-chains', () => db.getChains());
-ipcMain.handle('create-chain', (_e: any, name: string, nodes: db.ChainNode[]) => {
+handle('list-chains', () => db.getChains());
+handle('create-chain', (name: string, nodes: db.ChainNode[]) => {
   db.createChain(name, nodes);
   return db.getChains();
 });
-ipcMain.handle(
-  'update-chain',
-  (_e: any, id: number, name: string, nodes: db.ChainNode[]) => {
-    db.updateChain(id, name, nodes);
-    return db.getChains();
-  }
-);
-ipcMain.handle('delete-chain', (_e: any, id: number) => {
+handle('update-chain', (id: number, name: string, nodes: db.ChainNode[]) => {
+  db.updateChain(id, name, nodes);
+  return db.getChains();
+});
+handle('delete-chain', (id: number) => {
   db.deleteChain(id);
   return db.getChains();
 });
-ipcMain.handle('get-chain-by-name', (_e: any, name: string) => {
-  return db.getChainByName(name);
-});
+handle('get-chain-by-name', (name: string) => db.getChainByName(name));
+
+handle('get-error-log', () => logger.getErrorLog());
+handle('export-diagnostics', () => exportDiagnostics());
 
 ipcMain.on('hide-overlay', () => {
   if (overlayWindow) {
