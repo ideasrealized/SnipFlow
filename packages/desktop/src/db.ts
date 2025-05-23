@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { join } from 'path';
 import { homedir } from 'os';
 import { existsSync, mkdirSync } from 'fs';
+import { logger } from './logger';
 
 // Use a persistent location in user's home directory
 const SNIPFLOW_DIR = join(homedir(), '.snipflow');
@@ -13,6 +14,14 @@ const DB_PATH = join(SNIPFLOW_DIR, 'snippets.db');
 console.log('Database path:', DB_PATH); // Debug log
 
 const db = new Database(DB_PATH);
+
+function measure<T>(label: string, fn: () => T): T {
+  const start = Date.now();
+  const result = fn();
+  const end = Date.now();
+  logger.perf(`${label}: ${end - start}ms`);
+  return result;
+}
 
 export interface Snippet {
   id: number;
@@ -70,37 +79,41 @@ const getChainByNameStmt = db.prepare(
 );
 
 export function getSnippets(): Snippet[] {
-  return getSnippetsStmt.all() as Snippet[];
+  return measure('db.getSnippets', () => getSnippetsStmt.all() as Snippet[]);
 }
 
 export function createSnippet(content: string): void {
-  insertSnippet.run(content);
+  measure('db.createSnippet', () => insertSnippet.run(content));
 }
 
 export function updateSnippet(id: number, content: string): void {
-  updateSnippetStmt.run(content, id);
+  measure('db.updateSnippet', () => updateSnippetStmt.run(content, id));
 }
 
 export function deleteSnippet(id: number): void {
-  deleteSnippetStmt.run(id);
+  measure('db.deleteSnippet', () => deleteSnippetStmt.run(id));
 }
 
 export function getChains(): Chain[] {
-  return getChainsStmt.all().map((row: any) => ({
-    id: row.id,
-    name: row.name,
-    nodes: JSON.parse(row.nodes) as ChainNode[],
-  }));
+  return measure('db.getChains', () =>
+    getChainsStmt.all().map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      nodes: JSON.parse(row.nodes) as ChainNode[],
+    }))
+  );
 }
 
 export function getChainByName(name: string): Chain | undefined {
-  const row = getChainByNameStmt.get(name) as any;
-  if (!row) return undefined;
-  return { id: row.id, name: row.name, nodes: JSON.parse(row.nodes) };
+  return measure('db.getChainByName', () => {
+    const row = getChainByNameStmt.get(name) as any;
+    if (!row) return undefined;
+    return { id: row.id, name: row.name, nodes: JSON.parse(row.nodes) };
+  });
 }
 
 export function createChain(name: string, nodes: ChainNode[]): void {
-  insertChainStmt.run(name, JSON.stringify(nodes));
+  measure('db.createChain', () => insertChainStmt.run(name, JSON.stringify(nodes)));
 }
 
 export function updateChain(
@@ -108,9 +121,11 @@ export function updateChain(
   name: string,
   nodes: ChainNode[]
 ): void {
-  updateChainStmt.run(name, JSON.stringify(nodes), id);
+  measure('db.updateChain', () =>
+    updateChainStmt.run(name, JSON.stringify(nodes), id)
+  );
 }
 
 export function deleteChain(id: number): void {
-  deleteChainStmt.run(id);
+  measure('db.deleteChain', () => deleteChainStmt.run(id));
 }

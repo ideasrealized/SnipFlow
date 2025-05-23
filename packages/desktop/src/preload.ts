@@ -14,4 +14,6 @@ contextBridge.exposeInMainWorld('api', {
   deleteChain: (id: number) => ipcRenderer.invoke('delete-chain', id),
   getChainByName: (name: string) => ipcRenderer.invoke('get-chain-by-name', name),
   hideOverlay: () => ipcRenderer.send('hide-overlay'),
+  getErrorLog: () => ipcRenderer.invoke('get-error-log'),
+  exportDiagnostics: () => ipcRenderer.invoke('export-diagnostics'),
 });

@@ -15,6 +15,8 @@ const chainNodesDiv = document.getElementById('chain-nodes') as HTMLDivElement;
 const addTextBtn = document.getElementById('add-text') as HTMLButtonElement;
 const addChoiceBtn = document.getElementById('add-choice') as HTMLButtonElement;
 const chainList = document.getElementById('chain-list') as HTMLUListElement;
+const errorDiv = document.getElementById('error-log') as HTMLDivElement;
+const exportBtn = document.getElementById('export-diagnostics') as HTMLButtonElement;
 
 async function refresh() {
   const snippets = await window.api.list();
@@ -141,5 +143,19 @@ chainForm.addEventListener('submit', async e => {
 refreshChains();
 
 refresh();
+
+async function loadErrors() {
+  const log = await window.api.getErrorLog();
+  if (errorDiv) {
+    errorDiv.textContent = log;
+  }
+}
+
+loadErrors();
+
+exportBtn?.addEventListener('click', async () => {
+  const path = await window.api.exportDiagnostics();
+  alert(`Diagnostics exported to ${path}`);
+});
 
 export {};
