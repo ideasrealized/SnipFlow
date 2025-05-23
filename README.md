@@ -71,6 +71,15 @@ pnpm setup
 ### Development Commands
 
 ```bash
+# Start the Electron desktop app
+pnpm start:desktop
+
+# Start development mode for desktop app
+pnpm dev:desktop
+
+# Build the desktop app
+pnpm build:desktop
+
 # Start development servers for all packages
 pnpm dev
 
@@ -95,7 +104,10 @@ pnpm clean
 ```bash
 # Work on desktop app
 cd packages/desktop
-pnpm dev
+pnpm dev          # Compile and start Electron app
+pnpm start        # Same as dev
+pnpm build        # Compile TypeScript only
+pnpm package      # Build and package with electron-builder
 
 # Work on shared utilities
 cd packages/shared
@@ -106,9 +118,19 @@ cd packages/core
 pnpm build
 ```
 
+## Features Currently Available
+
+🚀 **Electron Desktop App (Functional)**
+- ✅ Basic snippet management (CRUD operations)
+- ✅ SQLite database with better-sqlite3
+- ✅ Global hotkey support (Ctrl+Shift+S)
+- ✅ IPC communication between main and renderer
+- ✅ TypeScript compilation and development workflow
+- ✅ Window management and system tray integration
+
 ## Development Status
 
-🚀 **Development Environment Complete** - Ready for Codex development!
+🎉 **Electron App Ready for Development** - Fully functional foundation!
 
 **Current Status:**
 - ✅ Git repository initialized
@@ -119,9 +141,12 @@ pnpm build
 - ✅ ESLint and Prettier setup
 - ✅ Package dependencies installed
 - ✅ Development scripts configured
-- 🔄 Ready for Electron app development
+- ✅ **Electron app functional with better-sqlite3**
+- ✅ **SQLite database operations working**
+- ✅ **Global hotkeys and IPC communication**
+- 🔄 Ready for advanced features and UI development
 - 🔄 Ready for Rust native modules
-- 🔄 Ready for shared utilities
+- 🔄 Ready for shared utilities expansion
 
 See [snipflow-dev-setup.md](./snipflow-dev-setup.md) for detailed development roadmap and setup instructions.
 

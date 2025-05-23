@@ -7,7 +7,10 @@
   "packageManager": "pnpm@10.11.0",
   "scripts": {
     "dev": "pnpm --parallel run dev",
+    "dev:desktop": "pnpm --filter @snipflow/desktop dev",
     "build": "pnpm --parallel run build",
+    "build:desktop": "pnpm --filter @snipflow/desktop build",
+    "start:desktop": "pnpm --filter @snipflow/desktop start",
     "test": "pnpm --parallel run test",
     "lint": "eslint packages/*/src --ext .ts,.tsx",
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx,js,jsx,json,md}\"",

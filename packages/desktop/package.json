@@ -4,17 +4,24 @@
   "description": "SnipFlow Desktop Application",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "node dist/main.js",
+    "dev": "tsc && electron dist/main.js",
     "build": "tsc",
     "clean": "rimraf dist",
     "type-check": "tsc --noEmit",
-    "test": "pnpm run build && node --test dist/test/db.test.js"
+    "test": "pnpm run build && node --test dist/test/db.test.js",
+    "start": "tsc && electron dist/main.js",
+    "package": "tsc && electron-builder",
+    "rebuild": "electron-rebuild"
   },
   "devDependencies": {
-    "@types/node": "^20.11.16"
+    "@types/node": "^20.11.16",
+    "electron": "^36.3.1",
+    "electron-builder": "^26.0.12"
   },
   "dependencies": {
-    "@snipflow/shared": "workspace:*"
+    "@snipflow/shared": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^11.10.0"
   },
   "type": "commonjs"
 }
