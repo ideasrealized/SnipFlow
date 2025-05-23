@@ -1,7 +1,17 @@
 import Database from 'better-sqlite3';
 import { join } from 'path';
+import { homedir } from 'os';
+import { existsSync, mkdirSync } from 'fs';
 
-const DB_PATH = join(__dirname, '..', 'snippets.db');
+// Use a persistent location in user's home directory
+const SNIPFLOW_DIR = join(homedir(), '.snipflow');
+if (!existsSync(SNIPFLOW_DIR)) {
+  mkdirSync(SNIPFLOW_DIR, { recursive: true });
+}
+const DB_PATH = join(SNIPFLOW_DIR, 'snippets.db');
+
+console.log('Database path:', DB_PATH); // Debug log
+
 const db = new Database(DB_PATH);
 
 export interface Snippet {

@@ -3,6 +3,7 @@ interface SnippetApi {
   create(content: string): Promise<any>;
   update(id: number, content: string): Promise<any>;
   remove(id: number): Promise<any>;
+  hideOverlay(): void;
 }
 
 declare global {

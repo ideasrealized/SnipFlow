@@ -3,6 +3,20 @@ interface Snippet {
   content: string;
 }
 
+interface SnippetApi {
+  list(): Promise<{ id: number; content: string }[]>;
+  create(content: string): Promise<any>;
+  update(id: number, content: string): Promise<any>;
+  remove(id: number): Promise<any>;
+  hideOverlay(): void;
+}
+
+declare global {
+  interface Window {
+    api: SnippetApi;
+  }
+}
+
 const container = document.getElementById('container') as HTMLDivElement;
 const searchInput = document.getElementById('search') as HTMLInputElement;
 const results = document.getElementById('results') as HTMLUListElement;
