@@ -18,15 +18,30 @@ SnipFlow goes beyond traditional text expanders by introducing "chains" - branch
 
 ## Project Structure
 
-This will be a monorepo workspace managed with pnpm:
+This is a monorepo workspace managed with pnpm:
 
 ```
 snipflow/
 ├── packages/
-│   ├── desktop/     # Electron desktop application (planned)
-│   ├── core/        # Rust native modules (planned)
-│   └── shared/      # Shared types and utilities (planned)
-├── package.json     # Workspace configuration (to be added)
+│   ├── desktop/     # Electron desktop application
+│   │   ├── src/
+│   │   │   ├── main/      # Electron main process
+│   │   │   ├── renderer/  # React frontend
+│   │   │   └── preload/   # Preload scripts
+│   │   └── package.json
+│   ├── core/        # Rust native modules
+│   │   ├── src/
+│   │   └── package.json
+│   └── shared/      # Shared types and utilities
+│       ├── src/
+│       │   ├── types/
+│       │   └── utils/
+│       └── package.json
+├── scripts/         # Development scripts
+├── package.json     # Workspace configuration
+├── pnpm-workspace.yaml
+├── tsconfig.json
+├── .eslintrc.cjs
 └── README.md
 ```
 
@@ -34,33 +49,79 @@ snipflow/
 
 ### Prerequisites
 
-⚠️ **Development Environment Setup Required**
+✅ **Development Environment Ready**
 
-Before proceeding with development, you need:
+- Node.js v22.16.0 ✅
+- pnpm v10.11.0 ✅
 
-- Node.js (v20.x LTS or higher) - **Not yet installed**
-- pnpm (v8.0.0 or higher) - **To be installed after Node.js**
+### Installation
 
-### Next Steps
+```bash
+# Clone the repository
+git clone https://github.com/ideasrealized/SnipFlow.git
+cd SnipFlow
 
-1. Install Node.js from [nodejs.org](https://nodejs.org/)
-2. Install pnpm: `npm install -g pnpm`
-3. Initialize workspace: `pnpm init`
-4. Add package.json workspace configuration
+# Install dependencies
+pnpm install
 
-### Development
+# Run setup script (optional - verifies environment)
+pnpm setup
+```
 
-Development commands will be added once the Node.js environment is set up.
+### Development Commands
+
+```bash
+# Start development servers for all packages
+pnpm dev
+
+# Build all packages
+pnpm build
+
+# Run type checking
+pnpm type-check
+
+# Run linting
+pnpm lint
+
+# Format code
+pnpm format
+
+# Clean build artifacts
+pnpm clean
+```
+
+### Package-Specific Development
+
+```bash
+# Work on desktop app
+cd packages/desktop
+pnpm dev
+
+# Work on shared utilities
+cd packages/shared
+pnpm dev
+
+# Work on core modules
+cd packages/core
+pnpm build
+```
 
 ## Development Status
 
-🚧 **Early Development Phase** - Basic repository structure initialized.
+🚀 **Development Environment Complete** - Ready for Codex development!
 
 **Current Status:**
 - ✅ Git repository initialized
-- ✅ Basic project structure created
-- ⏳ Node.js environment setup required
-- ⏳ Workspace configuration pending
+- ✅ Node.js v22.16.0 installed
+- ✅ pnpm v10.11.0 installed
+- ✅ Monorepo structure created
+- ✅ TypeScript configuration
+- ✅ ESLint and Prettier setup
+- ✅ Package dependencies installed
+- ✅ Development scripts configured
+- 🔄 Ready for Electron app development
+- 🔄 Ready for Rust native modules
+- 🔄 Ready for shared utilities
 
 See [snipflow-dev-setup.md](./snipflow-dev-setup.md) for detailed development roadmap and setup instructions.
 

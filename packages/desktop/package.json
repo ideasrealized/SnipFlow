@@ -1,0 +1,18 @@
+{
+  "name": "@snipflow/desktop",
+  "version": "0.1.0",
+  "description": "SnipFlow Desktop Application",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "echo 'Electron dev server will be configured here'",
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16"
+  },
+  "dependencies": {
+    "@snipflow/shared": "workspace:*"
+  }
+} 

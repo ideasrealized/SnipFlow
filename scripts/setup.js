@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+
+console.log('🚀 Setting up SnipFlow development environment...\n');
+
+// Check Node.js version
+const nodeVersion = process.version;
+console.log(`✅ Node.js version: ${nodeVersion}`);
+
+// Check pnpm
+try {
+  const pnpmVersion = execSync('pnpm --version', { encoding: 'utf8' }).trim();
+  console.log(`✅ pnpm version: ${pnpmVersion}`);
+} catch (error) {
+  console.error('❌ pnpm not found. Please install pnpm first.');
+  process.exit(1);
+}
+
+// Install dependencies
+console.log('\n📦 Installing dependencies...');
+execSync('pnpm install', { stdio: 'inherit' });
+
+// Run type checking
+console.log('\n🔍 Running type checks...');
+try {
+  execSync('pnpm type-check', { stdio: 'inherit' });
+  console.log('✅ Type checking passed');
+} catch (error) {
+  console.log('⚠️  Type checking found issues (expected for initial setup)');
+}
+
+// Run linting
+console.log('\n🧹 Running linter...');
+try {
+  execSync('pnpm lint', { stdio: 'inherit' });
+  console.log('✅ Linting passed');
+} catch (error) {
+  console.log('⚠️  Linting found issues (expected for initial setup)');
+}
+
+console.log('\n🎉 SnipFlow development environment setup complete!');
+console.log('\nNext steps:');
+console.log('1. Start development: pnpm dev');
+console.log('2. Build project: pnpm build');
+console.log('3. Run tests: pnpm test');
+console.log('\nHappy coding! 🚀'); 

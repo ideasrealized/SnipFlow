@@ -1,0 +1,10 @@
+{
+  "name": "@snipflow/core",
+  "version": "0.1.0",
+  "description": "SnipFlow Rust native modules",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "echo 'Rust build will be configured here'",
+    "clean": "echo 'Rust clean will be configured here'"
+  }
+} 
