@@ -2,17 +2,19 @@
   "name": "@snipflow/desktop",
   "version": "0.1.0",
   "description": "SnipFlow Desktop Application",
-  "main": "dist/main/index.js",
+  "main": "dist/main.js",
   "scripts": {
-    "dev": "echo 'Electron dev server will be configured here'",
+    "dev": "node dist/main.js",
     "build": "tsc",
     "clean": "rimraf dist",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "pnpm run build && node --test dist/test/db.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.11.16"
   },
   "dependencies": {
     "@snipflow/shared": "workspace:*"
-  }
-} 
+  },
+  "type": "commonjs"
+}
