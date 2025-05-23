@@ -18,7 +18,7 @@ const list = document.getElementById('list') as HTMLUListElement;
 async function refresh() {
   const snippets = await window.api.list();
   list.innerHTML = '';
-  snippets.forEach((sn) => {
+  snippets.forEach(sn => {
     const li = document.createElement('li');
     li.textContent = sn.content;
     li.addEventListener('click', async () => {
@@ -30,7 +30,7 @@ async function refresh() {
     });
     const del = document.createElement('button');
     del.textContent = 'Delete';
-    del.addEventListener('click', async (e) => {
+    del.addEventListener('click', async e => {
       e.stopPropagation();
       await window.api.remove(sn.id);
       refresh();
@@ -40,7 +40,7 @@ async function refresh() {
   });
 }
 
-form.addEventListener('submit', async (e) => {
+form.addEventListener('submit', async e => {
   e.preventDefault();
   if (input.value) {
     await window.api.create(input.value);
