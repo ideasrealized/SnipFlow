@@ -4,6 +4,7 @@ import * as db from './db';
 import { logger } from './logger';
 import { initErrorTracking, withRetry } from './error-tracker';
 import { exportDiagnostics } from './diagnostics';
+import { startClipboardMonitor, stopClipboardMonitor } from './services/clipboard';
 
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
@@ -95,6 +96,7 @@ app.whenReady().then(() => {
   logger.info('Application starting');
   createWindow();
   createOverlayWindow();
+  startClipboardMonitor();
 
   globalShortcut.register('CommandOrControl+Shift+S', () => {
     if (mainWindow) {
@@ -118,6 +120,7 @@ app.on('window-all-closed', () => {
   if (mouseCheckInterval) {
     clearInterval(mouseCheckInterval);
   }
+  stopClipboardMonitor();
   if (process.platform !== 'darwin') app.quit();
 });
 
@@ -149,6 +152,12 @@ handle('delete-chain', (id: number) => {
   return db.getChains();
 });
 handle('get-chain-by-name', (name: string) => db.getChainByName(name));
+
+handle('get-clipboard-history', () => db.getClipboardHistory());
+handle('pin-clipboard-item', (id: string, pinned: boolean) => {
+  db.pinClipboardItem(id, pinned);
+  return db.getClipboardHistory();
+});
 
 handle('get-error-log', () => logger.getErrorLog());
 handle('export-diagnostics', () => exportDiagnostics());

@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { join } from 'path';
 import { homedir } from 'os';
 import { existsSync, mkdirSync } from 'fs';
+import { randomUUID } from 'crypto';
 import { logger } from './logger';
 
 // Use a persistent location in user's home directory
@@ -128,4 +129,73 @@ export function updateChain(
 
 export function deleteChain(id: number): void {
   measure('db.deleteChain', () => deleteChainStmt.run(id));
+}
+
+export interface ClipboardEntry {
+  id: string;
+  content: string;
+  timestamp: number;
+  pinned: number;
+}
+
+// Clipboard history table
+const initClipboard = () => {
+  db.exec(`CREATE TABLE IF NOT EXISTS clipboard_history (
+    id TEXT PRIMARY KEY,
+    content TEXT NOT NULL,
+    timestamp INTEGER,
+    pinned INTEGER DEFAULT 0
+  )`);
+};
+initClipboard();
+
+const insertClipStmt = db.prepare(
+  'INSERT INTO clipboard_history(id, content, timestamp) VALUES (?, ?, ?)'
+);
+const updateClipTimeStmt = db.prepare(
+  'UPDATE clipboard_history SET timestamp = ? WHERE id = ?'
+);
+const getClipByContentStmt = db.prepare(
+  'SELECT id, pinned FROM clipboard_history WHERE content = ?'
+);
+const getHistoryStmt = db.prepare(
+  'SELECT id, content, timestamp, pinned FROM clipboard_history ORDER BY pinned DESC, timestamp DESC'
+);
+const setPinnedStmt = db.prepare('UPDATE clipboard_history SET pinned = ? WHERE id = ?');
+const deleteClipStmt = db.prepare('DELETE FROM clipboard_history WHERE id = ?');
+const countUnpinnedStmt = db.prepare('SELECT COUNT(*) as c FROM clipboard_history WHERE pinned = 0');
+const oldestUnpinnedStmt = db.prepare(
+  'SELECT id FROM clipboard_history WHERE pinned = 0 ORDER BY timestamp ASC LIMIT ?'
+);
+
+import { randomUUID } from 'crypto';
+
+export function addClipboardEntry(content: string): void {
+  measure('db.addClipboardEntry', () => {
+    const existing = getClipByContentStmt.get(content) as any;
+    const now = Date.now();
+    if (existing) {
+      updateClipTimeStmt.run(now, existing.id);
+    } else {
+      insertClipStmt.run(randomUUID(), content, now);
+    }
+    trimHistory();
+  });
+}
+
+function trimHistory() {
+  const row = countUnpinnedStmt.get() as any;
+  let excess = row.c - 20;
+  if (excess > 0) {
+    const olds = oldestUnpinnedStmt.all(excess) as any[];
+    olds.forEach(o => deleteClipStmt.run(o.id));
+  }
+}
+
+export function getClipboardHistory(): ClipboardEntry[] {
+  return measure('db.getClipboardHistory', () => getHistoryStmt.all() as ClipboardEntry[]);
+}
+
+export function pinClipboardItem(id: string, pinned: boolean): void {
+  measure('db.pinClipboardItem', () => setPinnedStmt.run(pinned ? 1 : 0, id));
 }
