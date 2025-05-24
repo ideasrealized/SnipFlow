@@ -14,13 +14,20 @@ declare global {
 const container = document.getElementById('container') as HTMLDivElement;
 const searchInput = document.getElementById('search') as HTMLInputElement;
 const results = document.getElementById('results') as HTMLUListElement;
+const historyList = document.getElementById('history') as HTMLUListElement;
 const chainRunner = document.getElementById('chain-runner') as HTMLDivElement;
 
 let snippets: Snippet[] = [];
+let clips: { id: string; content: string; timestamp: number; pinned: number }[] = [];
 
 async function loadSnippets() {
   snippets = await window.api.list();
   render();
+}
+
+async function loadHistory() {
+  clips = await window.api.getClipboardHistory();
+  renderHistory();
 }
 
 function render(filter = '') {
@@ -42,6 +49,37 @@ function render(filter = '') {
         }
       });
       results.appendChild(li);
+    });
+
+  renderHistory(filter);
+}
+
+function renderHistory(filter = '') {
+  const term = filter.toLowerCase();
+  historyList.innerHTML = '';
+  clips
+    .filter(c => c.content.toLowerCase().includes(term))
+    .forEach(c => {
+      const li = document.createElement('li');
+      li.textContent = c.content;
+      const pin = document.createElement('button');
+      pin.textContent = c.pinned ? 'Unpin' : 'Pin';
+      pin.addEventListener('click', async e => {
+        e.stopPropagation();
+        await window.api.pinClipboardItem(c.id, !c.pinned);
+        await loadHistory();
+      });
+      li.appendChild(pin);
+      li.addEventListener('click', () => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(c.content).then(() => {
+            window.api.hideOverlay?.();
+          });
+        } else {
+          window.api.hideOverlay?.();
+        }
+      });
+      historyList.appendChild(li);
     });
 }
 
@@ -102,6 +140,7 @@ searchInput.addEventListener('input', () => {
 });
 
 loadSnippets();
+loadHistory();
 container.classList.add('show');
 
 export {};
