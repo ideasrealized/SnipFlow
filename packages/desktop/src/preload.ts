@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('api', {
   getClipboardHistory: () => ipcRenderer.invoke('get-clipboard-history'),
   pinClipboardItem: (id: string, pinned: boolean) =>
     ipcRenderer.invoke('pin-clipboard-item', id, pinned),
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (s: any) => ipcRenderer.invoke('save-settings', s),
+  insertSnippet: (text: string) => ipcRenderer.invoke('insert-snippet', text),
   hideOverlay: () => ipcRenderer.send('hide-overlay'),
   getErrorLog: () => ipcRenderer.invoke('get-error-log'),
   exportDiagnostics: () => ipcRenderer.invoke('export-diagnostics'),

@@ -16,9 +16,22 @@ const searchInput = document.getElementById('search') as HTMLInputElement;
 const results = document.getElementById('results') as HTMLUListElement;
 const historyList = document.getElementById('history') as HTMLUListElement;
 const chainRunner = document.getElementById('chain-runner') as HTMLDivElement;
+const preview = document.getElementById('preview') as HTMLDivElement;
+const flash = document.getElementById('flash') as HTMLDivElement;
 
 let snippets: Snippet[] = [];
 let clips: { id: string; content: string; timestamp: number; pinned: number }[] = [];
+let filtered: Snippet[] = [];
+let selectedIndex = -1;
+
+async function initSettings() {
+  const s = await window.api.getSettings?.();
+  if (s && s.theme === 'light') {
+    document.body.classList.add('light');
+  } else {
+    document.body.classList.remove('light');
+  }
+}
 
 async function loadSnippets() {
   snippets = await window.api.list();
@@ -33,23 +46,16 @@ async function loadHistory() {
 function render(filter = '') {
   const term = filter.toLowerCase();
   results.innerHTML = '';
-  snippets
-    .filter(sn => sn.content.toLowerCase().includes(term))
-    .forEach(sn => {
-      const li = document.createElement('li');
-      li.textContent = sn.content;
-      li.addEventListener('click', async () => {
-        const final = await processSnippet(sn.content);
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(final).then(() => {
-            window.api.hideOverlay?.();
-          });
-        } else {
-          window.api.hideOverlay?.();
-        }
-      });
-      results.appendChild(li);
-    });
+  filtered = snippets.filter(sn => sn.content.toLowerCase().includes(term));
+  filtered.forEach((sn, idx) => {
+    const li = document.createElement('li');
+    li.textContent = sn.content;
+    li.addEventListener('click', () => handleSelect(idx));
+    li.addEventListener('mouseover', () => highlight(idx));
+    results.appendChild(li);
+  });
+  selectedIndex = filtered.length ? 0 : -1;
+  highlight(selectedIndex);
 
   renderHistory(filter);
 }
@@ -70,15 +76,7 @@ function renderHistory(filter = '') {
         await loadHistory();
       });
       li.appendChild(pin);
-      li.addEventListener('click', () => {
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(c.content).then(() => {
-            window.api.hideOverlay?.();
-          });
-        } else {
-          window.api.hideOverlay?.();
-        }
-      });
+      li.addEventListener('click', () => handleClipSelect(c.content));
       historyList.appendChild(li);
     });
 }
@@ -135,10 +133,60 @@ function presentChoice(
   });
 }
 
+function highlight(idx: number) {
+  const items = Array.from(results.querySelectorAll('li'));
+  items.forEach((li, i) => {
+    li.classList.toggle('selected', i === idx);
+  });
+  selectedIndex = idx;
+  if (filtered[idx]) {
+    preview.textContent = filtered[idx].content;
+  } else {
+    preview.textContent = '';
+  }
+}
+
+function showFlash() {
+  flash.classList.add('show');
+  setTimeout(() => flash.classList.remove('show'), 300);
+}
+
+async function handleSelect(idx: number) {
+  const sn = filtered[idx];
+  if (!sn) return;
+  const final = await processSnippet(sn.content);
+  await window.api.insertSnippet(final);
+  showFlash();
+  window.api.hideOverlay?.();
+}
+
+function handleClipSelect(text: string) {
+  window.api.insertSnippet(text);
+  showFlash();
+  window.api.hideOverlay?.();
+}
+
 searchInput.addEventListener('input', () => {
   render(searchInput.value);
 });
 
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    window.api.hideOverlay?.();
+  } else if (e.key === 'ArrowDown') {
+    if (selectedIndex < filtered.length - 1) highlight(selectedIndex + 1);
+  } else if (e.key === 'ArrowUp') {
+    if (selectedIndex > 0) highlight(selectedIndex - 1);
+  } else if (e.key === 'Enter') {
+    if (selectedIndex >= 0) void handleSelect(selectedIndex);
+  }
+});
+
+window.addEventListener('focus', () => {
+  searchInput.focus();
+});
+
+initSettings();
 loadSnippets();
 loadHistory();
 container.classList.add('show');

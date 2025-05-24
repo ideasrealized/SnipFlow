@@ -1,10 +1,24 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, screen } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  ipcMain,
+  screen,
+  clipboard,
+} from 'electron';
 import { join } from 'path';
 import * as db from './db';
 import { logger } from './logger';
 import { initErrorTracking, withRetry } from './error-tracker';
 import { exportDiagnostics } from './diagnostics';
 import { startClipboardMonitor, stopClipboardMonitor } from './services/clipboard';
+import {
+  loadSettings,
+  saveSettings,
+  getSettings,
+  Settings,
+} from './settings';
+import { pasteClipboard } from './autopaste';
 
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
@@ -35,17 +49,20 @@ function createWindow() {
 
 function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const s = getSettings();
+  const x = s.overlaySide === 'left' ? 0 : width - 320;
+  const y = s.overlayY ?? 0;
   overlayWindow = new BrowserWindow({
     width: 320,
     height: 250,
-    x: width - 320,
-    y: 0,
+    x,
+    y,
     frame: false,
     transparent: true,
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    focusable: false,
+    focusable: true,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
     },
@@ -92,6 +109,7 @@ function isMouseOverOverlay(): boolean {
 }
 
 app.whenReady().then(() => {
+  loadSettings();
   initErrorTracking();
   logger.info('Application starting');
   createWindow();
@@ -105,6 +123,13 @@ app.whenReady().then(() => {
       } else {
         mainWindow.show();
       }
+    }
+  });
+
+  globalShortcut.register('CommandOrControl+Shift+Space', () => {
+    if (overlayWindow) {
+      overlayWindow.show();
+      overlayWindow.focus();
     }
   });
 
@@ -122,6 +147,10 @@ app.on('window-all-closed', () => {
   }
   stopClipboardMonitor();
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 handle('list-snippets', () => db.getSnippets());
@@ -159,11 +188,25 @@ handle('pin-clipboard-item', (id: string, pinned: boolean) => {
   return db.getClipboardHistory();
 });
 
+handle('get-settings', () => getSettings());
+handle('save-settings', (s: Partial<Settings>) => {
+  return saveSettings(s);
+});
+
+handle('insert-snippet', (text: string) => {
+  clipboard.writeText(text);
+  pasteClipboard();
+});
+
 handle('get-error-log', () => logger.getErrorLog());
 handle('export-diagnostics', () => exportDiagnostics());
 
 ipcMain.on('hide-overlay', () => {
   if (overlayWindow) {
+    const bounds = overlayWindow.getBounds();
+    const display = screen.getPrimaryDisplay().workAreaSize;
+    const side = bounds.x < display.width / 2 ? 'left' : 'right';
+    saveSettings({ overlayY: bounds.y, overlaySide: side });
     overlayWindow.hide();
   }
 });
