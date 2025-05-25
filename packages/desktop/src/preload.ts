@@ -25,6 +25,14 @@ contextBridge.exposeInMainWorld('api', {
   exportDiagnostics: () => ipcRenderer.invoke('export-diagnostics'),
 });
 
+contextBridge.exposeInMainWorld('events', {
+  onOverlayShow: (cb: () => void) => ipcRenderer.on('overlay:show', cb),
+  onOverlayHide: (cb: () => void) => ipcRenderer.on('overlay:hide', cb),
+  notifyOverlayHidden: () => ipcRenderer.send('overlay:hidden'),
+  onThemeChanged: (cb: (_: unknown, theme: 'light' | 'dark') => void) =>
+    ipcRenderer.on('theme:changed', cb),
+});
+
 contextBridge.exposeInMainWorld('tray', {
   toggleOverlay: () => ipcRenderer.invoke('tray:toggleOverlay'),
 });

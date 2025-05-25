@@ -70,4 +70,4 @@ export function createTray({ main, overlay }: TrayOptions): Tray {
   });
 
   return tray;
-} 
+}
