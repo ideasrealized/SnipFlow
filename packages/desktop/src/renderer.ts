@@ -1,4 +1,5 @@
 import type { SnippetApi } from './types';
+import { executeChain } from './services/chainService';
 
 declare global {
   interface Window {
@@ -85,12 +86,27 @@ async function refreshChains() {
   chains.forEach((ch: any) => {
     const li = document.createElement('li');
     li.textContent = ch.name;
+    const run = document.createElement('button');
+    run.textContent = 'Run';
+    run.addEventListener('click', async () => {
+      const chain = await window.api.getChainByName(ch.name);
+      if (!chain) return;
+      const output = await executeChain(chain, async (q, opts) => {
+        const ans = prompt(
+          `${q}\n${opts.map(o => o.label).join('/')}`
+        );
+        const found = opts.find(o => o.label === ans);
+        return found ? found.text : '';
+      });
+      alert(output);
+    });
     const del = document.createElement('button');
     del.textContent = 'Delete';
     del.addEventListener('click', async () => {
       await window.api.deleteChain(ch.id);
       refreshChains();
     });
+    li.appendChild(run);
     li.appendChild(del);
     chainList.appendChild(li);
   });

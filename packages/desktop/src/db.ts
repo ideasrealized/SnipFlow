@@ -168,7 +168,6 @@ const oldestUnpinnedStmt = db.prepare(
   'SELECT id FROM clipboard_history WHERE pinned = 0 ORDER BY timestamp ASC LIMIT ?'
 );
 
-import { randomUUID } from 'crypto';
 
 export function addClipboardEntry(content: string): void {
   measure('db.addClipboardEntry', () => {

@@ -1,4 +1,8 @@
 import type { SnippetApi } from './types';
+import {
+  parseChainPlaceholder,
+  executeChain,
+} from './services/chainService';
 
 interface Snippet {
   id: number;
@@ -82,38 +86,23 @@ function renderHistory(filter = '') {
 }
 
 async function processSnippet(content: string): Promise<string> {
-  const chainRegex = /\[Chain:([^\]]+)\]/;
-  const match = chainRegex.exec(content);
-  if (!match) {
-    return content;
-  }
-  const chainName = match[1]!;
-  const chainOutput = await runChain(chainName);
-  return content.replace(match[0], chainOutput);
-}
-
-async function runChain(name: string): Promise<string> {
-  const chain = await window.api.getChainByName(name);
-  if (!chain) return '';
+  const parsed = parseChainPlaceholder(content);
+  if (!parsed) return content;
+  const chain = await window.api.getChainByName(parsed.name);
+  if (!chain) return content;
 
   searchInput.style.display = 'none';
   results.style.display = 'none';
   chainRunner.style.display = 'block';
 
-  let result = '';
-  for (const node of chain.nodes) {
-    if (node.type === 'text') {
-      result += node.content;
-    } else if (node.type === 'choice') {
-      result += await presentChoice(node.content, node.options || []);
-    }
-  }
+  const chainOutput = await executeChain(chain, presentChoice);
 
   chainRunner.style.display = 'none';
   searchInput.style.display = '';
   results.style.display = '';
-  return result;
+  return content.replace(parsed.placeholder, chainOutput);
 }
+
 
 function presentChoice(
   question: string,
