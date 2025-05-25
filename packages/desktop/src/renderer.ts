@@ -18,6 +18,7 @@ const chainNameInput = document.getElementById(
 const chainNodesDiv = document.getElementById('chain-nodes') as HTMLDivElement;
 const addTextBtn = document.getElementById('add-text') as HTMLButtonElement;
 const addChoiceBtn = document.getElementById('add-choice') as HTMLButtonElement;
+const addInputBtn = document.getElementById('add-input') as HTMLButtonElement;
 const chainList = document.getElementById('chain-list') as HTMLUListElement;
 const errorDiv = document.getElementById('error-log') as HTMLDivElement;
 const exportBtn = document.getElementById(
@@ -85,6 +86,15 @@ function createChoiceNodeElement(): HTMLElement {
   return div;
 }
 
+function createInputNodeElement(): HTMLElement {
+  const div = document.createElement('div');
+  div.dataset.type = 'input';
+  const input = document.createElement('input');
+  input.placeholder = 'Prompt';
+  div.appendChild(input);
+  return div;
+}
+
 async function refreshChains() {
   const chains = await window.api.listChains();
   chainList.innerHTML = '';
@@ -96,11 +106,18 @@ async function refreshChains() {
     run.addEventListener('click', async () => {
       const chain = await window.api.getChainByName(ch.name);
       if (!chain) return;
-      const output = await executeChain(chain, async (q, opts) => {
-        const ans = prompt(`${q}\n${opts.map(o => o.label).join('/')}`);
-        const found = opts.find(o => o.label === ans);
-        return found ? found.text : '';
-      });
+      const output = await executeChain(
+        chain,
+        name => window.api.getChainByName(name),
+        async (q, opts) => {
+          const ans = prompt(`${q}\n${opts.map(o => o.label).join('/')}`);
+          const found = opts.find(o => o.label === ans);
+          return found ? found.text : '';
+        },
+        async promptText => {
+          return prompt(promptText) || '';
+        }
+      );
       alert(output);
     });
     const del = document.createElement('button');
@@ -132,6 +149,10 @@ addChoiceBtn.addEventListener('click', () => {
   chainNodesDiv.appendChild(createChoiceNodeElement());
 });
 
+addInputBtn.addEventListener('click', () => {
+  chainNodesDiv.appendChild(createInputNodeElement());
+});
+
 chainForm.addEventListener('submit', async e => {
   e.preventDefault();
   const nodes: any[] = [];
@@ -152,6 +173,9 @@ chainForm.addEventListener('submit', async e => {
         });
       });
       nodes.push({ type: 'choice', content: question.value, options: opts });
+    } else if (type === 'input') {
+      const inputEl = el.querySelector('input') as HTMLInputElement;
+      nodes.push({ type: 'input', content: inputEl.value });
     }
   });
   if (chainNameInput.value) {

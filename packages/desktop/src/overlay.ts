@@ -1,5 +1,5 @@
 import type { SnippetApi, EventsApi } from './types';
-import { parseChainPlaceholder, executeChain } from './services/chainService';
+import { processTextWithChain } from './services/chainService';
 
 interface Snippet {
   id: number;
@@ -93,21 +93,21 @@ function renderHistory(filter = '') {
 }
 
 async function processSnippet(content: string): Promise<string> {
-  const parsed = parseChainPlaceholder(content);
-  if (!parsed) return content;
-  const chain = await window.api.getChainByName(parsed.name);
-  if (!chain) return content;
-
   searchInput.style.display = 'none';
   results.style.display = 'none';
   chainRunner.style.display = 'block';
 
-  const chainOutput = await executeChain(chain, presentChoice);
+  const final = await processTextWithChain(
+    content,
+    name => window.api.getChainByName(name),
+    presentChoice,
+    presentInput
+  );
 
   chainRunner.style.display = 'none';
   searchInput.style.display = '';
   results.style.display = '';
-  return content.replace(parsed.placeholder, chainOutput);
+  return final;
 }
 
 function presentChoice(
@@ -125,6 +125,21 @@ function presentChoice(
       btn.addEventListener('click', () => resolve(opt.text));
       chainRunner.appendChild(btn);
     });
+  });
+}
+
+function presentInput(promptText: string): Promise<string> {
+  return new Promise(resolve => {
+    chainRunner.innerHTML = '';
+    const p = document.createElement('p');
+    p.textContent = promptText;
+    const input = document.createElement('input');
+    const btn = document.createElement('button');
+    btn.textContent = 'OK';
+    btn.addEventListener('click', () => resolve(input.value));
+    chainRunner.appendChild(p);
+    chainRunner.appendChild(input);
+    chainRunner.appendChild(btn);
   });
 }
 
