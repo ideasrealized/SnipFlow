@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, renameSync, statSync, appendFileSync } from 'fs';
+import {
+  existsSync,
+  mkdirSync,
+  renameSync,
+  statSync,
+  appendFileSync,
+} from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
@@ -22,7 +28,8 @@ function rotate(file: string) {
     if (!existsSync(file)) return;
     const stats = statSync(file);
     const date = new Date(stats.mtime);
-    const needsRotate = stats.size > MAX_SIZE ||
+    const needsRotate =
+      stats.size > MAX_SIZE ||
       date.toDateString() !== new Date().toDateString();
     if (!needsRotate) return;
     // shift old logs
@@ -32,7 +39,9 @@ function rotate(file: string) {
       if (existsSync(src)) {
         if (i + 1 > MAX_FILES) {
           // remove oldest
-          try { renameSync(src, dest); } catch {}
+          try {
+            renameSync(src, dest);
+          } catch {}
           continue;
         }
         renameSync(src, dest);
@@ -78,7 +87,9 @@ export const logger = {
   },
   getErrorLog(): string {
     try {
-      return existsSync(ERROR_LOG) ? String(require('fs').readFileSync(ERROR_LOG)) : '';
+      return existsSync(ERROR_LOG)
+        ? String(require('fs').readFileSync(ERROR_LOG))
+        : '';
     } catch {
       return '';
     }

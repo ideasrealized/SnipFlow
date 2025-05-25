@@ -25,7 +25,10 @@ function dumpCrash(err: unknown) {
   writeFileSync(path, String(err));
 }
 
-export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions): Promise<T> {
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  opts: RetryOptions
+): Promise<T> {
   let attempts = 0;
   while (true) {
     try {

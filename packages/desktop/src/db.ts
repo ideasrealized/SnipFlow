@@ -63,9 +63,13 @@ init();
 
 // Prepared statements for performance and security (after table creation)
 const insertSnippet = db.prepare('INSERT INTO snippets(content) VALUES (?)');
-const updateSnippetStmt = db.prepare('UPDATE snippets SET content = ? WHERE id = ?');
+const updateSnippetStmt = db.prepare(
+  'UPDATE snippets SET content = ? WHERE id = ?'
+);
 const deleteSnippetStmt = db.prepare('DELETE FROM snippets WHERE id = ?');
-const getSnippetsStmt = db.prepare('SELECT id, content FROM snippets ORDER BY id');
+const getSnippetsStmt = db.prepare(
+  'SELECT id, content FROM snippets ORDER BY id'
+);
 
 const insertChainStmt = db.prepare(
   'INSERT INTO chains(name, nodes) VALUES (?, ?)'
@@ -74,7 +78,9 @@ const updateChainStmt = db.prepare(
   'UPDATE chains SET name = ?, nodes = ? WHERE id = ?'
 );
 const deleteChainStmt = db.prepare('DELETE FROM chains WHERE id = ?');
-const getChainsStmt = db.prepare('SELECT id, name, nodes FROM chains ORDER BY id');
+const getChainsStmt = db.prepare(
+  'SELECT id, name, nodes FROM chains ORDER BY id'
+);
 const getChainByNameStmt = db.prepare(
   'SELECT id, name, nodes FROM chains WHERE name = ?'
 );
@@ -114,7 +120,9 @@ export function getChainByName(name: string): Chain | undefined {
 }
 
 export function createChain(name: string, nodes: ChainNode[]): void {
-  measure('db.createChain', () => insertChainStmt.run(name, JSON.stringify(nodes)));
+  measure('db.createChain', () =>
+    insertChainStmt.run(name, JSON.stringify(nodes))
+  );
 }
 
 export function updateChain(
@@ -161,9 +169,13 @@ const getClipByContentStmt = db.prepare(
 const getHistoryStmt = db.prepare(
   'SELECT id, content, timestamp, pinned FROM clipboard_history ORDER BY pinned DESC, timestamp DESC'
 );
-const setPinnedStmt = db.prepare('UPDATE clipboard_history SET pinned = ? WHERE id = ?');
+const setPinnedStmt = db.prepare(
+  'UPDATE clipboard_history SET pinned = ? WHERE id = ?'
+);
 const deleteClipStmt = db.prepare('DELETE FROM clipboard_history WHERE id = ?');
-const countUnpinnedStmt = db.prepare('SELECT COUNT(*) as c FROM clipboard_history WHERE pinned = 0');
+const countUnpinnedStmt = db.prepare(
+  'SELECT COUNT(*) as c FROM clipboard_history WHERE pinned = 0'
+);
 const oldestUnpinnedStmt = db.prepare(
   'SELECT id FROM clipboard_history WHERE pinned = 0 ORDER BY timestamp ASC LIMIT ?'
 );
@@ -191,7 +203,10 @@ function trimHistory() {
 }
 
 export function getClipboardHistory(): ClipboardEntry[] {
-  return measure('db.getClipboardHistory', () => getHistoryStmt.all() as ClipboardEntry[]);
+  return measure(
+    'db.getClipboardHistory',
+    () => getHistoryStmt.all() as ClipboardEntry[]
+  );
 }
 
 export function pinClipboardItem(id: string, pinned: boolean): void {

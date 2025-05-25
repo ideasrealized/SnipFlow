@@ -1,2 +1,2 @@
 // Shared types and utilities for SnipFlow
-export * from './types'; 
+export * from './types';

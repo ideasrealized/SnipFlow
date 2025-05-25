@@ -11,13 +11,11 @@ import * as db from './db';
 import { logger } from './logger';
 import { initErrorTracking, withRetry } from './error-tracker';
 import { exportDiagnostics } from './diagnostics';
-import { startClipboardMonitor, stopClipboardMonitor } from './services/clipboard';
 import {
-  loadSettings,
-  saveSettings,
-  getSettings,
-  Settings,
-} from './settings';
+  startClipboardMonitor,
+  stopClipboardMonitor,
+} from './services/clipboard';
+import { loadSettings, saveSettings, getSettings, Settings } from './settings';
 import { pasteClipboard } from './autopaste';
 
 let mainWindow: BrowserWindow | null = null;
@@ -28,7 +26,9 @@ function handle(channel: string, fn: (...args: any[]) => any) {
   ipcMain.handle(channel, async (_e, ...args) => {
     const start = Date.now();
     try {
-      return await withRetry(() => Promise.resolve(fn(...args)), { retries: 3 });
+      return await withRetry(() => Promise.resolve(fn(...args)), {
+        retries: 3,
+      });
     } finally {
       logger.perf(`ipc.${channel}: ${Date.now() - start}ms`);
     }
@@ -70,7 +70,7 @@ function createOverlayWindow() {
 
   overlayWindow.loadFile(join(__dirname, 'overlay.html'));
   overlayWindow.hide();
-  
+
   // Start mouse position monitoring
   startMouseMonitoring();
 }
@@ -78,13 +78,13 @@ function createOverlayWindow() {
 function startMouseMonitoring() {
   mouseCheckInterval = setInterval(() => {
     if (!overlayWindow) return;
-    
+
     const { x, y } = screen.getCursorScreenPoint();
     const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-    
+
     // Trigger overlay when mouse is in top-right corner (within 50px from edges)
     const isInTriggerZone = x > width - 50 && y < 50;
-    
+
     if (isInTriggerZone && !overlayWindow.isVisible()) {
       overlayWindow.showInactive();
     } else if (!isInTriggerZone && overlayWindow.isVisible()) {
@@ -100,12 +100,16 @@ function startMouseMonitoring() {
 
 function isMouseOverOverlay(): boolean {
   if (!overlayWindow) return false;
-  
+
   const { x, y } = screen.getCursorScreenPoint();
   const bounds = overlayWindow.getBounds();
-  
-  return x >= bounds.x && x <= bounds.x + bounds.width &&
-         y >= bounds.y && y <= bounds.y + bounds.height;
+
+  return (
+    x >= bounds.x &&
+    x <= bounds.x + bounds.width &&
+    y >= bounds.y &&
+    y <= bounds.y + bounds.height
+  );
 }
 
 app.whenReady().then(() => {

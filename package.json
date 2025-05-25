@@ -12,7 +12,7 @@
     "build:desktop": "pnpm --filter @snipflow/desktop build",
     "start:desktop": "pnpm --filter @snipflow/desktop start",
     "test": "pnpm --parallel run test",
-    "lint": "eslint packages/*/src --ext .ts,.tsx",
+    "lint": "eslint . --ext .ts,.tsx --resolve-plugins-relative-to .",
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx,js,jsx,json,md}\"",
     "type-check": "pnpm --parallel run type-check",
     "clean": "pnpm --parallel run clean && Remove-Item node_modules -Recurse -Force -ErrorAction SilentlyContinue",

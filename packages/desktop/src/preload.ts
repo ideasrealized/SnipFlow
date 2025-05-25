@@ -12,7 +12,8 @@ contextBridge.exposeInMainWorld('api', {
   updateChain: (id: number, name: string, nodes: unknown[]) =>
     ipcRenderer.invoke('update-chain', id, name, nodes),
   deleteChain: (id: number) => ipcRenderer.invoke('delete-chain', id),
-  getChainByName: (name: string) => ipcRenderer.invoke('get-chain-by-name', name),
+  getChainByName: (name: string) =>
+    ipcRenderer.invoke('get-chain-by-name', name),
   getClipboardHistory: () => ipcRenderer.invoke('get-clipboard-history'),
   pinClipboardItem: (id: string, pinned: boolean) =>
     ipcRenderer.invoke('pin-clipboard-item', id, pinned),

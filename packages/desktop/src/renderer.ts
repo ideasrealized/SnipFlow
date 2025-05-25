@@ -11,13 +11,17 @@ const form = document.getElementById('add-form') as HTMLFormElement;
 const input = document.getElementById('content') as HTMLInputElement;
 const list = document.getElementById('list') as HTMLUListElement;
 const chainForm = document.getElementById('chain-form') as HTMLFormElement;
-const chainNameInput = document.getElementById('chain-name') as HTMLInputElement;
+const chainNameInput = document.getElementById(
+  'chain-name'
+) as HTMLInputElement;
 const chainNodesDiv = document.getElementById('chain-nodes') as HTMLDivElement;
 const addTextBtn = document.getElementById('add-text') as HTMLButtonElement;
 const addChoiceBtn = document.getElementById('add-choice') as HTMLButtonElement;
 const chainList = document.getElementById('chain-list') as HTMLUListElement;
 const errorDiv = document.getElementById('error-log') as HTMLDivElement;
-const exportBtn = document.getElementById('export-diagnostics') as HTMLButtonElement;
+const exportBtn = document.getElementById(
+  'export-diagnostics'
+) as HTMLButtonElement;
 
 async function refresh() {
   const snippets = await window.api.list();
@@ -92,9 +96,7 @@ async function refreshChains() {
       const chain = await window.api.getChainByName(ch.name);
       if (!chain) return;
       const output = await executeChain(chain, async (q, opts) => {
-        const ans = prompt(
-          `${q}\n${opts.map(o => o.label).join('/')}`
-        );
+        const ans = prompt(`${q}\n${opts.map(o => o.label).join('/')}`);
         const found = opts.find(o => o.label === ans);
         return found ? found.text : '';
       });
@@ -143,7 +145,10 @@ chainForm.addEventListener('submit', async e => {
       const opts: any[] = [];
       optsEls.forEach(op => {
         const [label, text] = op.querySelectorAll('input');
-        opts.push({ label: (label as HTMLInputElement).value, text: (text as HTMLInputElement).value });
+        opts.push({
+          label: (label as HTMLInputElement).value,
+          text: (text as HTMLInputElement).value,
+        });
       });
       nodes.push({ type: 'choice', content: question.value, options: opts });
     }

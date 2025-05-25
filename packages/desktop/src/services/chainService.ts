@@ -56,4 +56,3 @@ export async function processTextWithChain(
   const chainOut = await executeChain(chain, choiceProvider);
   return text.replace(parsed.placeholder, chainOut);
 }
-

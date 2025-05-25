@@ -1,8 +1,5 @@
 import type { SnippetApi } from './types';
-import {
-  parseChainPlaceholder,
-  executeChain,
-} from './services/chainService';
+import { parseChainPlaceholder, executeChain } from './services/chainService';
 
 interface Snippet {
   id: number;
@@ -24,7 +21,12 @@ const preview = document.getElementById('preview') as HTMLDivElement;
 const flash = document.getElementById('flash') as HTMLDivElement;
 
 let snippets: Snippet[] = [];
-let clips: { id: string; content: string; timestamp: number; pinned: number }[] = [];
+let clips: {
+  id: string;
+  content: string;
+  timestamp: number;
+  pinned: number;
+}[] = [];
 let filtered: Snippet[] = [];
 let selectedIndex = -1;
 
@@ -102,7 +104,6 @@ async function processSnippet(content: string): Promise<string> {
   results.style.display = '';
   return content.replace(parsed.placeholder, chainOutput);
 }
-
 
 function presentChoice(
   question: string,
