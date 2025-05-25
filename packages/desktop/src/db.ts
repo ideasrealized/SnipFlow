@@ -168,7 +168,6 @@ const oldestUnpinnedStmt = db.prepare(
   'SELECT id FROM clipboard_history WHERE pinned = 0 ORDER BY timestamp ASC LIMIT ?'
 );
 
-
 export function addClipboardEntry(content: string): void {
   measure('db.addClipboardEntry', () => {
     const existing = getClipByContentStmt.get(content) as any;
