@@ -35,7 +35,7 @@ export interface ChainNodeChoiceOption {
 }
 
 export interface ChainNode {
-  type: 'text' | 'choice';
+  type: 'text' | 'choice' | 'input';
   content: string;
   options?: ChainNodeChoiceOption[];
 }

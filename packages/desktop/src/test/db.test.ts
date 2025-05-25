@@ -36,6 +36,7 @@ db.createChain('GreetingType', [
       { label: 'Casual', text: 'Hey there!' },
     ],
   },
+  { type: 'input', content: 'Your name?' },
 ]);
 
 let chains = db.getChains();
