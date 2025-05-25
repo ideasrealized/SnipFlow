@@ -22,6 +22,8 @@ import { createTray } from './tray';
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let mouseCheckInterval: NodeJS.Timeout | null = null;
+let hoverTimeout: NodeJS.Timeout | null = null;
+let isHovering = false;
 
 function handle(channel: string, fn: (...args: any[]) => any) {
   ipcMain.handle(channel, async (_e, ...args) => {
@@ -50,9 +52,8 @@ function createWindow() {
 
   mainWindow.loadFile(join(__dirname, 'index.html'));
   
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools();
-  }
+  // Force open DevTools for debugging
+  mainWindow.webContents.openDevTools();
   
   mainWindow.webContents.on('did-finish-load', () => {
     logger.info('Main window loaded successfully');
@@ -66,13 +67,13 @@ function createWindow() {
 function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   const s = getSettings();
-  const x = s.overlaySide === 'left' ? 0 : width - 320;
-  const y = s.overlayY ?? 0;
+  
+  // Start with default position, will be repositioned on hover
   overlayWindow = new BrowserWindow({
-    width: 320,
-    height: 250,
-    x,
-    y,
+    width: 420,
+    height: 520,
+    x: width - 430, // Start off-screen right
+    y: 10,
     frame: false,
     transparent: true,
     resizable: false,
@@ -89,32 +90,120 @@ function createOverlayWindow() {
 
   // Start mouse position monitoring
   startMouseMonitoring();
+  
+  logger.info(`Edge hover activation: ${s.edgeHover.enabled ? s.edgeHover.position : 'disabled'}`);
 }
 
 function startMouseMonitoring() {
+  if (mouseCheckInterval) {
+    clearInterval(mouseCheckInterval);
+  }
+
   mouseCheckInterval = setInterval(() => {
     if (!overlayWindow) return;
 
+    const settings = getSettings();
+    if (!settings.edgeHover.enabled) return;
+
     const { x, y } = screen.getCursorScreenPoint();
     const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    const { position, triggerSize } = settings.edgeHover;
 
-    // Trigger overlay when mouse is in top-right corner (within 50px from edges)
-    const isInTriggerZone = x > width - 50 && y < 50;
-
-    if (isInTriggerZone && !overlayWindow.isVisible()) {
-      overlayWindow.showInactive();
-      overlayWindow.webContents.send('overlay:show');
-    } else if (!isInTriggerZone && overlayWindow.isVisible()) {
-      // Add small delay to prevent flicker
-      setTimeout(() => {
-        if (overlayWindow && !isMouseOverOverlay()) {
-          overlayWindow.webContents.send('overlay:hide');
-          ipcMain.once('overlay:hidden', () => overlayWindow?.hide());
-          setTimeout(() => overlayWindow?.hide(), 350);
-        }
-      }, 200);
+    // Calculate trigger zone based on selected position
+    let isInTriggerZone = false;
+    switch (position) {
+      case 'top-left':
+        isInTriggerZone = x < triggerSize && y < triggerSize;
+        break;
+      case 'top-right':
+        isInTriggerZone = x > width - triggerSize && y < triggerSize;
+        break;
+      case 'bottom-left':
+        isInTriggerZone = x < triggerSize && y > height - triggerSize;
+        break;
+      case 'bottom-right':
+        isInTriggerZone = x > width - triggerSize && y > height - triggerSize;
+        break;
+      case 'left-center':
+        isInTriggerZone = x < triggerSize && y > height * 0.3 && y < height * 0.7;
+        break;
+      case 'right-center':
+        isInTriggerZone = x > width - triggerSize && y > height * 0.3 && y < height * 0.7;
+        break;
     }
-  }, 100);
+
+    if (isInTriggerZone && !isHovering && !overlayWindow.isVisible()) {
+      isHovering = true;
+      hoverTimeout = setTimeout(() => {
+        if (isHovering && overlayWindow && !overlayWindow.isVisible()) {
+          logger.info(`Showing overlay via ${position} edge hover`);
+          positionOverlayAtPosition(position);
+          overlayWindow.showInactive();
+          overlayWindow.webContents.send('overlay:show');
+        }
+      }, settings.edgeHover.delay);
+    } else if (!isInTriggerZone || isMouseOverOverlay()) {
+      if (isHovering) {
+        isHovering = false;
+        if (hoverTimeout) {
+          clearTimeout(hoverTimeout);
+          hoverTimeout = null;
+        }
+      }
+
+      // Hide overlay if mouse moved away and not over overlay
+      if (overlayWindow.isVisible() && !isInTriggerZone && !isMouseOverOverlay()) {
+        setTimeout(() => {
+          if (overlayWindow && overlayWindow.isVisible() && !isMouseOverOverlay()) {
+            logger.info('Hiding overlay - mouse moved away');
+            overlayWindow.webContents.send('overlay:hide');
+            ipcMain.once('overlay:hidden', () => overlayWindow?.hide());
+            setTimeout(() => overlayWindow?.hide(), 350);
+          }
+        }, 300);
+      }
+    }
+  }, 50); // More responsive polling
+}
+
+function positionOverlayAtPosition(position: string) {
+  if (!overlayWindow) return;
+
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const overlayWidth = 380;
+  const overlayHeight = 480;
+  const margin = 10;
+  const slideDistance = 20; // How far from edge to appear
+
+  let x = 0, y = 0;
+  switch (position) {
+    case 'top-left':
+      x = margin;
+      y = margin;
+      break;
+    case 'top-right':
+      x = width - overlayWidth - margin;
+      y = margin;
+      break;
+    case 'bottom-left':
+      x = margin;
+      y = height - overlayHeight - margin;
+      break;
+    case 'bottom-right':
+      x = width - overlayWidth - margin;
+      y = height - overlayHeight - margin;
+      break;
+    case 'left-center':
+      x = slideDistance;
+      y = (height - overlayHeight) / 2;
+      break;
+    case 'right-center':
+      x = width - overlayWidth - slideDistance;
+      y = (height - overlayHeight) / 2;
+      break;
+  }
+
+  overlayWindow.setBounds({ x, y, width: overlayWidth, height: overlayHeight });
 }
 
 function isMouseOverOverlay(): boolean {
@@ -172,6 +261,9 @@ app.on('window-all-closed', () => {
   if (mouseCheckInterval) {
     clearInterval(mouseCheckInterval);
   }
+  if (hoverTimeout) {
+    clearTimeout(hoverTimeout);
+  }
   stopClipboardMonitor();
   if (process.platform !== 'darwin') app.quit();
 });
@@ -219,6 +311,13 @@ handle('get-settings', () => getSettings());
 handle('save-settings', (s: Partial<Settings>) => {
   const updated = saveSettings(s);
   overlayWindow?.webContents.send('theme:changed', updated.theme);
+  
+  // Restart mouse monitoring if edge hover settings changed
+  if (s.edgeHover) {
+    startMouseMonitoring();
+    logger.info(`Edge hover updated: ${updated.edgeHover.enabled ? updated.edgeHover.position : 'disabled'}`);
+  }
+  
   return updated;
 });
 
@@ -239,5 +338,14 @@ ipcMain.on('hide-overlay', () => {
     overlayWindow.webContents.send('overlay:hide');
     ipcMain.once('overlay:hidden', () => overlayWindow?.hide());
     setTimeout(() => overlayWindow?.hide(), 350);
+  }
+});
+
+// Handle settings navigation from tray
+ipcMain.on('nav:openSettings', () => {
+  if (mainWindow) {
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send('navigate-to-settings');
   }
 });

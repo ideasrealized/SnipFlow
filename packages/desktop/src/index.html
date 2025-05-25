@@ -128,6 +128,20 @@
         margin-right: 10px;
       }
       
+      .item-content:hover::after {
+        content: " (click to copy)";
+        color: #4a90e2;
+        font-size: 11px;
+        opacity: 0.8;
+      }
+      
+      .snippet-content:hover::after {
+        content: " (click=copy, double-click=paste)";
+        color: #4a90e2;
+        font-size: 11px;
+        opacity: 0.8;
+      }
+      
       .chain-builder {
         background: #333;
         border-radius: 6px;
@@ -260,14 +274,28 @@
       
       <div class="section">
         <h1>🔗 Chains</h1>
+        <div class="help-box" style="background: #1a3a5c; border: 1px solid #4a90e2; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
+          <h3 style="color: #4a90e2; margin: 0 0 10px;">💡 How Chains Work:</h3>
+          <p style="margin: 0; font-size: 14px;">
+            • <strong>Text:</strong> Add any text you want<br>
+            • <strong>Questions:</strong> Give users choices<br>
+            • <strong>Input:</strong> Ask users to type something<br>
+            • <strong>Chain Links:</strong> Use <code>[Chain:Name]</code> in text to run other chains!
+          </p>
+        </div>
         <form id="chain-form">
           <div class="form-group">
             <input id="chain-name" type="text" placeholder="Chain name..." />
           </div>
           <div class="controls">
-            <button id="add-text" type="button" class="secondary">+ Text Node</button>
-            <button id="add-choice" type="button" class="secondary">+ Choice Node</button>
-            <button id="add-input" type="button" class="secondary">+ Input Node</button>
+            <button id="add-text" type="button" class="secondary">✏️ Add Text</button>
+            <button id="add-choice" type="button" class="secondary">❓ Add Question</button>
+            <button id="add-input" type="button" class="secondary">📝 Ask for Input</button>
+            <div class="advanced-controls" style="display: none;">
+              <button id="add-chain-link" type="button" class="secondary">🔗 Chain Link</button>
+              <button id="add-conditional" type="button" class="secondary">⚡ Conditional</button>
+            </div>
+            <button id="toggle-advanced" type="button" class="secondary">🔧 Advanced Mode</button>
           </div>
           <div id="chain-nodes" class="chain-builder"></div>
           <button type="submit">Save Chain</button>
@@ -275,6 +303,58 @@
         <ul id="chain-list" class="item-list"></ul>
         <div id="chains-empty" class="empty-state" style="display: none;">
           No chains created. Build your first automation chain above!
+        </div>
+      </div>
+      
+      <div class="section">
+        <h1>📋 Clipboard History</h1>
+        <ul id="clipboard-list" class="item-list"></ul>
+        <div id="clipboard-empty" class="empty-state" style="display: none;">
+          Clipboard history is empty. Copy some text to get started!
+        </div>
+      </div>
+      
+      <div class="section">
+        <h1>⚙️ Settings</h1>
+        
+        <h2>🖱️ Overlay Trigger</h2>
+        <div class="form-group">
+          <label style="display: block; margin-bottom: 5px; color: #4a90e2;">Edge Hover Position:</label>
+          <select id="edge-position" style="background: #3a3a3a; border: 1px solid #555; color: #e0e0e0; padding: 8px; border-radius: 4px; width: 200px;">
+            <option value="top-left">Top Left Corner</option>
+            <option value="top-right">Top Right Corner</option>
+            <option value="bottom-left">Bottom Left Corner</option>
+            <option value="bottom-right">Bottom Right Corner</option>
+            <option value="left-center">Left Edge Center</option>
+            <option value="right-center">Right Edge Center</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label style="display: block; margin-bottom: 5px; color: #4a90e2;">Trigger Size (pixels from edge):</label>
+          <input id="trigger-size" type="range" min="20" max="100" value="50" style="width: 200px;">
+          <span id="trigger-size-value" style="margin-left: 10px; color: #888;">50px</span>
+        </div>
+        
+        <div class="form-group">
+          <label style="display: block; margin-bottom: 5px; color: #4a90e2;">Hover Delay (milliseconds):</label>
+          <input id="hover-delay" type="range" min="0" max="1000" value="200" style="width: 200px;">
+          <span id="hover-delay-value" style="margin-left: 10px; color: #888;">200ms</span>
+        </div>
+        
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px; color: #4a90e2;">
+            <input id="edge-hover-enabled" type="checkbox" checked style="transform: scale(1.2);">
+            Enable Edge Hover
+          </label>
+        </div>
+        
+        <button id="save-settings" type="button">💾 Save Settings</button>
+        <button id="test-overlay" type="button" class="secondary">🧪 Test Overlay</button>
+        
+        <h2>🎨 Theme</h2>
+        <div class="form-group">
+          <button id="toggle-theme" type="button" class="secondary">🌙 Toggle Dark/Light Mode</button>
         </div>
       </div>
       

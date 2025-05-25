@@ -5,108 +5,290 @@
     <title>SnipFlow Overlay</title>
     <style>
       :root {
-        --bg: rgba(30, 30, 30, 0.9);
+        --bg: rgba(20, 20, 20, 0.92);
         --text: #fff;
-        --hover: rgba(255, 255, 255, 0.1);
+        --hover: rgba(74, 144, 226, 0.3);
+        --accent: #4a90e2;
+        --pinned: #e74c3c;
+        --success: #27ae60;
       }
       body.light {
-        --bg: rgba(255, 255, 255, 0.95);
+        --bg: rgba(255, 255, 255, 0.96);
         --text: #222;
-        --hover: rgba(0, 0, 0, 0.1);
+        --hover: rgba(74, 144, 226, 0.15);
       }
       body {
         margin: 0;
-        font-family: sans-serif;
-        background-color: var(--bg);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        background: transparent;
         color: var(--text);
-        transition: background-color 0.2s;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(12px);
+        overflow: hidden;
       }
       #container {
-        width: 300px;
-        padding: 10px;
-        transform: translateX(20px);
-        opacity: 0;
-        transition: transform 0.3s ease, opacity 0.3s ease;
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+        padding: 0;
+        margin: 0;
       }
-      #container.show {
+      
+      .floating-grid {
+        position: absolute;
+        display: grid;
+        grid-template-columns: repeat(2, 160px);
+        gap: 12px;
+        padding: 15px;
+        background: var(--bg);
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        transform: translateX(-100%);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 1000;
+      }
+      
+      .floating-grid.show {
         transform: translateX(0);
         opacity: 1;
       }
-      input {
-        width: 100%;
-        padding: 5px;
-        font-size: 14px;
+      
+      .floating-grid.right-side {
+        right: 20px;
+        transform: translateX(100%);
       }
-      ul {
-        list-style: none;
-        padding: 0;
-        margin: 5px 0 0 0;
-        max-height: 200px;
-        overflow-y: auto;
+      
+      .floating-grid.right-side.show {
+        transform: translateX(0);
       }
-      li {
-        padding: 5px;
+      
+      .grid-header {
+        grid-column: 1 / -1;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+        text-align: center;
+        margin-bottom: 8px;
+        padding: 8px;
+        background: rgba(74, 144, 226, 0.1);
+        border-radius: 6px;
+        border: 1px solid rgba(74, 144, 226, 0.2);
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--hover);
+      }
+      .status-indicator {
+        font-size: 11px;
+        opacity: 0.7;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .status-indicator .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #27ae60;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      .logo {
+        font-weight: bold;
+        color: var(--accent);
+        font-size: 16px;
+      }
+      .grid-box {
+        background: var(--hover);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 10px;
+        padding: 14px 10px;
         cursor: pointer;
-        border-radius: 4px;
-        transition: background-color 0.15s, transform 0.15s;
+        transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+        min-height: 70px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        backdrop-filter: blur(8px);
+        overflow: hidden;
       }
-      li:hover {
-        background-color: var(--hover);
-        transform: translateX(4px);
+      
+      .grid-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+        border-radius: 10px;
+        z-index: 0;
       }
-      li.selected {
-        background-color: var(--hover);
+      
+      .grid-box > * {
+        position: relative;
+        z-index: 1;
+      }
+      
+      .grid-box:hover {
+        background: var(--accent);
+        transform: translateY(-4px) scale(1.05);
+        box-shadow: 0 12px 24px rgba(74, 144, 226, 0.4);
+        border-color: rgba(255,255,255,0.3);
+      }
+      
+      .grid-box.pinned {
+        border-color: var(--pinned);
+        background: rgba(231, 76, 60, 0.15);
+      }
+      
+      .grid-box.pinned::after {
+        content: "📌";
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        font-size: 11px;
+        z-index: 2;
+      }
+      
+      .grid-box.chain::after {
+        content: "🔗";
+        position: absolute;
+        top: 6px;
+        left: 8px;
+        font-size: 11px;
+        z-index: 2;
+      }
+      .item-title {
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .item-preview {
+        font-size: 11px;
+        opacity: 0.8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      #search {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid var(--hover);
+        border-radius: 6px;
+        background: rgba(255,255,255,0.05);
+        color: var(--text);
+        margin-bottom: 15px;
+      }
+      #search:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+      }
+      .section-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+        margin: 15px 0 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
       #chain-runner {
-        margin-top: 10px;
+        background: rgba(74, 144, 226, 0.1);
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+        display: none;
       }
-      #preview {
-        margin-top: 8px;
-        font-size: 12px;
-        opacity: 0.7;
+      #chain-runner button {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 4px;
+        transition: background 0.2s;
+      }
+      #chain-runner button:hover {
+        background: #357abd;
       }
       #flash {
         position: absolute;
-        bottom: 10px;
-        right: 10px;
-        background: var(--hover);
-        padding: 4px 8px;
-        border-radius: 4px;
+        bottom: 15px;
+        right: 15px;
+        background: var(--accent);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
         opacity: 0;
         transition: opacity 0.3s, transform 0.3s;
-        transform: translateY(4px);
+        transform: translateY(10px);
+        font-size: 13px;
+        font-weight: 500;
       }
       #flash.show {
         opacity: 1;
         transform: translateY(0);
       }
       #toggle-theme {
-        position: absolute;
-        top: 5px;
-        right: 5px;
         background: none;
         border: none;
         color: var(--text);
         cursor: pointer;
         opacity: 0.7;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s;
       }
       #toggle-theme:hover {
         opacity: 1;
+        background: var(--hover);
       }
     </style>
   </head>
   <body>
     <div id="container">
-      <button id="toggle-theme" title="Toggle theme">☀️</button>
-      <input id="search" type="text" placeholder="Search" />
-      <h3>Snippets</h3>
-      <ul id="results"></ul>
-      <h3>Paste from History</h3>
-      <ul id="history"></ul>
-      <div id="chain-runner" style="display:none"></div>
-      <div id="preview"></div>
+      <!-- Pinned Favorites Grid -->
+      <div id="pinned-grid" class="floating-grid" style="top: 20px; left: 20px;">
+        <div class="grid-header">⭐ Pinned</div>
+      </div>
+      
+      <!-- Quick Snippets Grid -->
+      <div id="snippets-grid" class="floating-grid" style="top: 120px; left: 20px;">
+        <div class="grid-header">✂️ Snippets</div>
+      </div>
+      
+      <!-- Chains Grid -->
+      <div id="chains-grid" class="floating-grid" style="top: 220px; left: 20px;">
+        <div class="grid-header">🔗 Chains</div>
+      </div>
+      
+      <!-- Recent Clipboard Grid -->
+      <div id="history-grid" class="floating-grid" style="top: 320px; left: 20px;">
+        <div class="grid-header">📋 Recent</div>
+      </div>
+      
+      <div id="chain-runner"></div>
     </div>
-    <div id="flash">Copied!</div>
+    
+    <div id="flash">Pasted!</div>
     <script src="overlay.js"></script>
   </body>
 </html>

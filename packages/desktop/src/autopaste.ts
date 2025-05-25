@@ -9,7 +9,7 @@ export function pasteClipboard(): void {
       );
     } else if (process.platform === 'win32') {
       execSync(
-        'powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys(\"^v\")"'
+        'powershell -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\\\"^v\\\")"'
       );
     } else {
       execSync('xdotool key --clearmodifiers ctrl+v');

@@ -7,11 +7,26 @@ export interface Settings {
   theme: 'light' | 'dark';
   overlayX?: number;
   overlayY?: number;
+  edgeHover: {
+    enabled: boolean;
+    position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'left-center' | 'right-center';
+    triggerSize: number; // pixels from edge
+    delay: number; // ms delay before showing
+  };
 }
 
 const DIR = join(homedir(), '.snipflow');
 const FILE = join(DIR, 'settings.json');
-let settings: Settings = { overlaySide: 'right', theme: 'dark' };
+let settings: Settings = { 
+  overlaySide: 'right', 
+  theme: 'dark',
+  edgeHover: {
+    enabled: true,
+    position: 'right-center',
+    triggerSize: 50,
+    delay: 200
+  }
+};
 
 export function loadSettings(): Settings {
   try {
