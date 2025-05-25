@@ -23,3 +23,10 @@ export interface SnippetApi {
 export interface TrayApi {
   toggleOverlay(): Promise<void>;
 }
+
+export interface EventsApi {
+  onOverlayShow(fn: () => void): void;
+  onOverlayHide(fn: () => void): void;
+  notifyOverlayHidden(): void;
+  onThemeChanged(fn: (_: unknown, theme: 'light' | 'dark') => void): void;
+}

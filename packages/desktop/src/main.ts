@@ -88,11 +88,14 @@ function startMouseMonitoring() {
 
     if (isInTriggerZone && !overlayWindow.isVisible()) {
       overlayWindow.showInactive();
+      overlayWindow.webContents.send('overlay:show');
     } else if (!isInTriggerZone && overlayWindow.isVisible()) {
       // Add small delay to prevent flicker
       setTimeout(() => {
         if (overlayWindow && !isMouseOverOverlay()) {
-          overlayWindow.hide();
+          overlayWindow.webContents.send('overlay:hide');
+          ipcMain.once('overlay:hidden', () => overlayWindow?.hide());
+          setTimeout(() => overlayWindow?.hide(), 350);
         }
       }, 200);
     }
@@ -138,6 +141,7 @@ app.whenReady().then(() => {
     if (overlayWindow) {
       overlayWindow.show();
       overlayWindow.focus();
+      overlayWindow.webContents.send('overlay:show');
     }
   });
 
@@ -198,7 +202,9 @@ handle('pin-clipboard-item', (id: string, pinned: boolean) => {
 
 handle('get-settings', () => getSettings());
 handle('save-settings', (s: Partial<Settings>) => {
-  return saveSettings(s);
+  const updated = saveSettings(s);
+  overlayWindow?.webContents.send('theme:changed', updated.theme);
+  return updated;
 });
 
 handle('insert-snippet', (text: string) => {
@@ -215,6 +221,8 @@ ipcMain.on('hide-overlay', () => {
     const display = screen.getPrimaryDisplay().workAreaSize;
     const side = bounds.x < display.width / 2 ? 'left' : 'right';
     saveSettings({ overlayY: bounds.y, overlaySide: side });
-    overlayWindow.hide();
+    overlayWindow.webContents.send('overlay:hide');
+    ipcMain.once('overlay:hidden', () => overlayWindow?.hide());
+    setTimeout(() => overlayWindow?.hide(), 350);
   }
 });

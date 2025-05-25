@@ -1,4 +1,4 @@
-import type { SnippetApi } from './types';
+import type { SnippetApi, EventsApi } from './types';
 import { parseChainPlaceholder, executeChain } from './services/chainService';
 
 interface Snippet {
@@ -10,6 +10,7 @@ declare global {
   interface Window {
     api: SnippetApi;
     tray?: { toggleOverlay(): Promise<void> };
+    events?: EventsApi;
   }
 }
 
@@ -30,13 +31,16 @@ let clips: {
 }[] = [];
 let filtered: Snippet[] = [];
 let selectedIndex = -1;
+let currentTheme: 'light' | 'dark' = 'dark';
 
 async function initSettings() {
   const s = await window.api.getSettings?.();
   if (s && s.theme === 'light') {
     document.body.classList.add('light');
+    currentTheme = 'light';
   } else {
     document.body.classList.remove('light');
+    currentTheme = 'dark';
   }
 }
 
@@ -177,9 +181,30 @@ window.addEventListener('focus', () => {
   searchInput.focus();
 });
 
+window.events?.onOverlayShow(() => {
+  container.classList.add('show');
+});
+
+window.events?.onOverlayHide(() => {
+  container.classList.remove('show');
+  setTimeout(() => window.events?.notifyOverlayHidden(), 300);
+});
+
+window.events?.onThemeChanged((_, theme) => {
+  document.body.classList.toggle('light', theme === 'light');
+  currentTheme = theme;
+});
+
+const themeBtn = document.getElementById('toggle-theme') as HTMLButtonElement;
+themeBtn?.addEventListener('click', async () => {
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  await window.api.saveSettings({ theme: newTheme });
+  document.body.classList.toggle('light', newTheme === 'light');
+  currentTheme = newTheme;
+});
+
 initSettings();
 loadSnippets();
 loadHistory();
-container.classList.add('show');
 
 export {};

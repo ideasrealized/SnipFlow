@@ -24,9 +24,9 @@
       #container {
         width: 300px;
         padding: 10px;
-        transform: translateX(100%);
+        transform: translateX(20px);
         opacity: 0;
-        transition: transform 0.25s ease, opacity 0.25s ease;
+        transition: transform 0.3s ease, opacity 0.3s ease;
       }
       #container.show {
         transform: translateX(0);
@@ -47,9 +47,12 @@
       li {
         padding: 5px;
         cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.15s, transform 0.15s;
       }
       li:hover {
         background-color: var(--hover);
+        transform: translateX(4px);
       }
       li.selected {
         background-color: var(--hover);
@@ -70,15 +73,31 @@
         padding: 4px 8px;
         border-radius: 4px;
         opacity: 0;
-        transition: opacity 0.3s;
+        transition: opacity 0.3s, transform 0.3s;
+        transform: translateY(4px);
       }
       #flash.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      #toggle-theme {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: none;
+        border: none;
+        color: var(--text);
+        cursor: pointer;
+        opacity: 0.7;
+      }
+      #toggle-theme:hover {
         opacity: 1;
       }
     </style>
   </head>
   <body>
     <div id="container">
+      <button id="toggle-theme" title="Toggle theme">☀️</button>
       <input id="search" type="text" placeholder="Search" />
       <h3>Snippets</h3>
       <ul id="results"></ul>
