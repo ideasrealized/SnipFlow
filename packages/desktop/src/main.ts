@@ -40,12 +40,27 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
+    show: true,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   });
 
   mainWindow.loadFile(join(__dirname, 'index.html'));
+  
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
+  
+  mainWindow.webContents.on('did-finish-load', () => {
+    logger.info('Main window loaded successfully');
+  });
+  
+  mainWindow.webContents.on('render-process-gone', () => {
+    logger.error('Main window render process gone');
+  });
 }
 
 function createOverlayWindow() {

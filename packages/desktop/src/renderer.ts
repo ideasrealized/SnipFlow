@@ -8,6 +8,10 @@ declare global {
   }
 }
 
+// Debug logging
+console.log('Renderer script starting...');
+console.log('window.api available:', !!window.api);
+
 const form = document.getElementById('add-form') as HTMLFormElement;
 const input = document.getElementById('content') as HTMLInputElement;
 const list = document.getElementById('list') as HTMLUListElement;
@@ -271,9 +275,15 @@ chainForm.addEventListener('submit', async e => {
   }
 });
 
-refreshChains();
+refreshChains().catch(error => {
+  console.error('Failed to load chains:', error);
+  alert('Failed to load chains. Check console for details.');
+});
 
-refresh();
+refresh().catch(error => {
+  console.error('Failed to load snippets:', error);
+  alert('Failed to load snippets. Check console for details.');
+});
 
 async function loadErrors() {
   const log = await window.api.getErrorLog();
