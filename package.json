@@ -15,7 +15,7 @@
     "lint": "eslint packages/*/src --ext .ts,.tsx",
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx,js,jsx,json,md}\"",
     "type-check": "pnpm --parallel run type-check",
-    "clean": "pnpm --parallel run clean && rm -rf node_modules",
+    "clean": "pnpm --parallel run clean && Remove-Item node_modules -Recurse -Force -ErrorAction SilentlyContinue",
     "setup": "node scripts/setup.js"
   },
   "devDependencies": {
