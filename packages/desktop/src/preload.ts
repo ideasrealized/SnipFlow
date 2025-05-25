@@ -24,3 +24,7 @@ contextBridge.exposeInMainWorld('api', {
   getErrorLog: () => ipcRenderer.invoke('get-error-log'),
   exportDiagnostics: () => ipcRenderer.invoke('export-diagnostics'),
 });
+
+contextBridge.exposeInMainWorld('tray', {
+  toggleOverlay: () => ipcRenderer.invoke('tray:toggleOverlay'),
+});

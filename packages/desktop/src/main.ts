@@ -17,6 +17,7 @@ import {
 } from './services/clipboard';
 import { loadSettings, saveSettings, getSettings, Settings } from './settings';
 import { pasteClipboard } from './autopaste';
+import { createTray } from './tray';
 
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
@@ -118,6 +119,9 @@ app.whenReady().then(() => {
   logger.info('Application starting');
   createWindow();
   createOverlayWindow();
+  if (mainWindow && overlayWindow) {
+    createTray({ main: mainWindow, overlay: overlayWindow });
+  }
   startClipboardMonitor();
 
   globalShortcut.register('CommandOrControl+Shift+S', () => {

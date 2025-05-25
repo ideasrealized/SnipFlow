@@ -19,3 +19,7 @@ export interface SnippetApi {
   getErrorLog(): Promise<string>;
   exportDiagnostics(): Promise<string>;
 }
+
+export interface TrayApi {
+  toggleOverlay(): Promise<void>;
+}

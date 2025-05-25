@@ -4,6 +4,7 @@ import { executeChain } from './services/chainService';
 declare global {
   interface Window {
     api: SnippetApi;
+    tray?: { toggleOverlay(): Promise<void> };
   }
 }
 

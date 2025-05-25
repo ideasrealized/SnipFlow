@@ -9,6 +9,7 @@ interface Snippet {
 declare global {
   interface Window {
     api: SnippetApi;
+    tray?: { toggleOverlay(): Promise<void> };
   }
 }
 
