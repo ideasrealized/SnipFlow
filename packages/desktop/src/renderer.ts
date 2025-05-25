@@ -28,69 +28,131 @@ const exportBtn = document.getElementById(
 async function refresh() {
   const snippets = await window.api.list();
   list.innerHTML = '';
-  snippets.forEach(sn => {
-    const li = document.createElement('li');
-    li.textContent = sn.content;
-    li.addEventListener('click', async () => {
-      const newContent = prompt('Edit snippet', sn.content);
-      if (newContent !== null) {
-        await window.api.update(sn.id, newContent);
-        refresh();
-      }
+  const emptyState = document.getElementById('snippets-empty');
+  
+  if (snippets.length === 0) {
+    emptyState!.style.display = 'block';
+  } else {
+    emptyState!.style.display = 'none';
+    snippets.forEach(sn => {
+      const li = document.createElement('li');
+      
+      const content = document.createElement('div');
+      content.className = 'item-content';
+      content.textContent = sn.content;
+      content.addEventListener('click', async () => {
+        const newContent = prompt('Edit snippet', sn.content);
+        if (newContent !== null) {
+          await window.api.update(sn.id, newContent);
+          refresh();
+        }
+      });
+      
+      const actions = document.createElement('div');
+      const del = document.createElement('button');
+      del.textContent = 'Delete';
+      del.className = 'danger';
+      del.addEventListener('click', async e => {
+        e.stopPropagation();
+        if (confirm('Delete this snippet?')) {
+          await window.api.remove(sn.id);
+          refresh();
+        }
+      });
+      
+      actions.appendChild(del);
+      li.appendChild(content);
+      li.appendChild(actions);
+      list.appendChild(li);
     });
-    const del = document.createElement('button');
-    del.textContent = 'Delete';
-    del.addEventListener('click', async e => {
-      e.stopPropagation();
-      await window.api.remove(sn.id);
-      refresh();
-    });
-    li.appendChild(del);
-    list.appendChild(li);
-  });
+  }
 }
 
 function createTextNodeElement(): HTMLElement {
   const div = document.createElement('div');
+  div.className = 'chain-node';
   div.dataset.type = 'text';
   const input = document.createElement('input');
   input.placeholder = 'Text content';
+  input.type = 'text';
+  
+  const removeBtn = document.createElement('button');
+  removeBtn.textContent = '×';
+  removeBtn.className = 'danger';
+  removeBtn.style.float = 'right';
+  removeBtn.addEventListener('click', () => div.remove());
+  
+  div.appendChild(removeBtn);
   div.appendChild(input);
   return div;
 }
 
 function createChoiceNodeElement(): HTMLElement {
   const div = document.createElement('div');
+  div.className = 'chain-node';
   div.dataset.type = 'choice';
+  
+  const removeBtn = document.createElement('button');
+  removeBtn.textContent = '×';
+  removeBtn.className = 'danger';
+  removeBtn.style.float = 'right';
+  removeBtn.addEventListener('click', () => div.remove());
+  
   const q = document.createElement('input');
   q.placeholder = 'Question';
-  div.appendChild(q);
+  q.type = 'text';
+  
   const opts = document.createElement('div');
   opts.className = 'options';
-  div.appendChild(opts);
+  
   const add = document.createElement('button');
   add.textContent = 'Add Option';
   add.type = 'button';
+  add.className = 'secondary';
   add.addEventListener('click', () => {
     const opt = document.createElement('div');
     opt.className = 'option';
     const label = document.createElement('input');
     label.placeholder = 'Label';
+    label.type = 'text';
     const text = document.createElement('input');
     text.placeholder = 'Text';
+    text.type = 'text';
+    
+    const removeOpt = document.createElement('button');
+    removeOpt.textContent = '×';
+    removeOpt.className = 'danger';
+    removeOpt.addEventListener('click', () => opt.remove());
+    
     opt.appendChild(label);
     opt.appendChild(text);
+    opt.appendChild(removeOpt);
     opts.appendChild(opt);
   });
+  
+  div.appendChild(removeBtn);
+  div.appendChild(q);
+  div.appendChild(opts);
   div.appendChild(add);
   return div;
 }
 
 function createInputNodeElement(): HTMLElement {
   const div = document.createElement('div');
+  div.className = 'chain-node';
   div.dataset.type = 'input';
+  
+  const removeBtn = document.createElement('button');
+  removeBtn.textContent = '×';
+  removeBtn.className = 'danger';
+  removeBtn.style.float = 'right';
+  removeBtn.addEventListener('click', () => div.remove());
+  
   const input = document.createElement('input');
-  input.placeholder = 'Prompt';
+  input.placeholder = 'Prompt text';
+  input.type = 'text';
+  
+  div.appendChild(removeBtn);
   div.appendChild(input);
   return div;
 }
@@ -98,38 +160,61 @@ function createInputNodeElement(): HTMLElement {
 async function refreshChains() {
   const chains = await window.api.listChains();
   chainList.innerHTML = '';
-  chains.forEach((ch: any) => {
-    const li = document.createElement('li');
-    li.textContent = ch.name;
-    const run = document.createElement('button');
-    run.textContent = 'Run';
-    run.addEventListener('click', async () => {
-      const chain = await window.api.getChainByName(ch.name);
-      if (!chain) return;
-      const output = await executeChain(
-        chain,
-        name => window.api.getChainByName(name),
-        async (q, opts) => {
-          const ans = prompt(`${q}\n${opts.map(o => o.label).join('/')}`);
-          const found = opts.find(o => o.label === ans);
-          return found ? found.text : '';
-        },
-        async promptText => {
-          return prompt(promptText) || '';
+  const emptyState = document.getElementById('chains-empty');
+  
+  if (chains.length === 0) {
+    emptyState!.style.display = 'block';
+  } else {
+    emptyState!.style.display = 'none';
+    chains.forEach((ch: any) => {
+      const li = document.createElement('li');
+      
+      const content = document.createElement('div');
+      content.className = 'item-content';
+      content.textContent = ch.name;
+      
+      const actions = document.createElement('div');
+      const run = document.createElement('button');
+      run.textContent = 'Run';
+      run.addEventListener('click', async () => {
+        const chain = await window.api.getChainByName(ch.name);
+        if (!chain) return;
+        try {
+          const output = await executeChain(
+            chain,
+            name => window.api.getChainByName(name),
+            async (q, opts) => {
+              const ans = prompt(`${q}\n${opts.map(o => o.label).join('/')}`);
+              const found = opts.find(o => o.label === ans);
+              return found ? found.text : '';
+            },
+            async promptText => {
+              return prompt(promptText) || '';
+            }
+          );
+          alert(`Chain Output:\n${output}`);
+        } catch (error) {
+          alert(`Chain Error: ${error}`);
         }
-      );
-      alert(output);
+      });
+      
+      const del = document.createElement('button');
+      del.textContent = 'Delete';
+      del.className = 'danger';
+      del.addEventListener('click', async () => {
+        if (confirm(`Delete chain "${ch.name}"?`)) {
+          await window.api.deleteChain(ch.id);
+          refreshChains();
+        }
+      });
+      
+      actions.appendChild(run);
+      actions.appendChild(del);
+      li.appendChild(content);
+      li.appendChild(actions);
+      chainList.appendChild(li);
     });
-    const del = document.createElement('button');
-    del.textContent = 'Delete';
-    del.addEventListener('click', async () => {
-      await window.api.deleteChain(ch.id);
-      refreshChains();
-    });
-    li.appendChild(run);
-    li.appendChild(del);
-    chainList.appendChild(li);
-  });
+  }
 }
 
 form.addEventListener('submit', async e => {

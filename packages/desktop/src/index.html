@@ -3,27 +3,288 @@
   <head>
     <meta charset="UTF-8" />
     <title>SnipFlow Desktop</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      
+      h1 {
+        color: #4a90e2;
+        margin-bottom: 20px;
+        font-size: 24px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+      }
+      
+      h2 {
+        color: #4a90e2;
+        margin: 30px 0 15px;
+        font-size: 18px;
+      }
+      
+      .section {
+        background: #2d2d2d;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid #404040;
+      }
+      
+      .form-group {
+        margin-bottom: 15px;
+      }
+      
+      input[type="text"] {
+        background: #3a3a3a;
+        border: 1px solid #555;
+        color: #e0e0e0;
+        padding: 10px;
+        border-radius: 4px;
+        width: 100%;
+        font-size: 14px;
+      }
+      
+      input[type="text"]:focus {
+        outline: none;
+        border-color: #4a90e2;
+        box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+      }
+      
+      button {
+        background: #4a90e2;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+      }
+      
+      button:hover {
+        background: #357abd;
+      }
+      
+      button.danger {
+        background: #e74c3c;
+      }
+      
+      button.danger:hover {
+        background: #c0392b;
+      }
+      
+      button.secondary {
+        background: #666;
+      }
+      
+      button.secondary:hover {
+        background: #555;
+      }
+      
+      .item-list {
+        list-style: none;
+      }
+      
+      .item-list li {
+        background: #3a3a3a;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .item-list li:hover {
+        background: #404040;
+        border-color: #666;
+      }
+      
+      .item-content {
+        flex: 1;
+        cursor: pointer;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-right: 10px;
+      }
+      
+      .chain-builder {
+        background: #333;
+        border-radius: 6px;
+        padding: 15px;
+        margin: 15px 0;
+        border: 1px solid #555;
+      }
+      
+      .chain-node {
+        background: #3a3a3a;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #555;
+        position: relative;
+      }
+      
+      .chain-node::before {
+        content: attr(data-type);
+        position: absolute;
+        top: -8px;
+        left: 10px;
+        background: #4a90e2;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: bold;
+      }
+      
+      .option {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 5px;
+        padding: 5px;
+        background: #2d2d2d;
+        border-radius: 3px;
+      }
+      
+      .option input {
+        flex: 1;
+      }
+      
+      .diagnostics {
+        background: #2d2d2d;
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 15px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        color: #ccc;
+        white-space: pre-wrap;
+        height: 150px;
+        overflow-y: auto;
+      }
+      
+      .empty-state {
+        text-align: center;
+        color: #888;
+        font-style: italic;
+        padding: 20px;
+      }
+      
+      .controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+      }
+      
+      .status-bar {
+        background: #333;
+        padding: 10px;
+        margin-top: 20px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #888;
+        text-align: center;
+      }
+      
+      .light {
+        background: #f5f5f5;
+        color: #333;
+      }
+      
+      .light .section {
+        background: white;
+        border-color: #ddd;
+      }
+      
+      .light input[type="text"] {
+        background: white;
+        border-color: #ddd;
+        color: #333;
+      }
+      
+      .light .item-list li {
+        background: #f9f9f9;
+        border-color: #ddd;
+      }
+      
+      .light .chain-node {
+        background: #f9f9f9;
+        border-color: #ddd;
+      }
+      
+      .light .option {
+        background: #f0f0f0;
+      }
+    </style>
   </head>
   <body>
-    <h1>Snippets</h1>
-    <form id="add-form">
-      <input id="content" type="text" placeholder="Snippet" />
-      <button type="submit">Add</button>
-    </form>
-    <ul id="list"></ul>
-    <h1>Chains</h1>
-    <form id="chain-form">
-      <input id="chain-name" type="text" placeholder="Chain name" />
-      <div id="chain-nodes"></div>
-      <button id="add-text" type="button">Add Text Node</button>
-      <button id="add-choice" type="button">Add Choice Node</button>
-      <button id="add-input" type="button">Add Input Node</button>
-      <button type="submit">Save Chain</button>
-    </form>
-    <ul id="chain-list"></ul>
-    <h2>Diagnostics</h2>
-    <pre id="error-log" style="background:#eee;height:150px;overflow:auto"></pre>
-    <button id="export-diagnostics" type="button">Export Logs</button>
+    <div class="container">
+      <div class="status-bar">
+        SnipFlow Desktop - Press Ctrl+Shift+S to show/hide | Ctrl+Shift+Space for overlay
+      </div>
+      
+      <div class="section">
+        <h1>✂️ Snippets</h1>
+        <form id="add-form" class="form-group">
+          <input id="content" type="text" placeholder="Enter your snippet text..." />
+          <button type="submit">Add Snippet</button>
+        </form>
+        <ul id="list" class="item-list"></ul>
+        <div id="snippets-empty" class="empty-state" style="display: none;">
+          No snippets yet. Add your first snippet above!
+        </div>
+      </div>
+      
+      <div class="section">
+        <h1>🔗 Chains</h1>
+        <form id="chain-form">
+          <div class="form-group">
+            <input id="chain-name" type="text" placeholder="Chain name..." />
+          </div>
+          <div class="controls">
+            <button id="add-text" type="button" class="secondary">+ Text Node</button>
+            <button id="add-choice" type="button" class="secondary">+ Choice Node</button>
+            <button id="add-input" type="button" class="secondary">+ Input Node</button>
+          </div>
+          <div id="chain-nodes" class="chain-builder"></div>
+          <button type="submit">Save Chain</button>
+        </form>
+        <ul id="chain-list" class="item-list"></ul>
+        <div id="chains-empty" class="empty-state" style="display: none;">
+          No chains created. Build your first automation chain above!
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2>📊 Diagnostics</h2>
+        <div id="error-log" class="diagnostics"></div>
+        <button id="export-diagnostics" type="button" class="secondary">Export Logs</button>
+      </div>
+    </div>
+    
     <script src="renderer.js"></script>
   </body>
 </html>
