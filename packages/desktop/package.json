@@ -4,24 +4,33 @@
   "description": "SnipFlow Desktop Application",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "tsc && electron dist/main.js",
-    "build": "tsc && node -e \"require('fs').copyFileSync('src/index.html','dist/index.html'); require('fs').copyFileSync('src/overlay.html','dist/overlay.html'); require('fs').cpSync('assets','dist/assets',{recursive:true,force:true})\"",
+    "_predev_or_prebuild": "pnpm run clean && tsc && node ./esbuild.renderer.js && node -e \"const fs = require('fs'); const path = require('path'); fs.copyFileSync(path.join('src', 'index.html'), path.join('dist', 'index.html')); fs.copyFileSync(path.join('src', 'overlay.html'), path.join('dist', 'overlay.html')); fs.copyFileSync(path.join('src', 'chainManager.html'), path.join('dist', 'chainManager.html')); fs.cpSync(path.join('src', 'assets'), path.join('dist', 'assets'), {recursive:true,force:true});\"",
+    "dev": "pnpm run _predev_or_prebuild && electron dist/main.js",
+    "build": "pnpm run _predev_or_prebuild",
     "clean": "rimraf dist",
     "type-check": "tsc --noEmit",
     "test": "pnpm run build && node --test dist/test/db.test.js",
     "start": "tsc && electron dist/main.js",
     "package": "tsc && electron-builder",
-        "rebuild": "electron-rebuild"
+    "rebuild": "electron-rebuild"
   },
   "devDependencies": {
     "@types/node": "^20.11.16",
     "electron": "^36.3.1",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/react-beautiful-dnd": "^13.1.0",
+    "@types/mocha": "^10.0.0",
+    "esbuild": "^0.20.0"
   },
   "dependencies": {
     "@snipflow/shared": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
-    "better-sqlite3": "^11.10.0"
+    "better-sqlite3": "^11.10.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.0"
   },
   "type": "commonjs"
 }

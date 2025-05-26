@@ -1,23 +1,6 @@
-// Inline API interface to avoid imports in browser
-interface SnippetApi {
-  list(): Promise<{ id: number; content: string }[]>;
-  create(content: string): Promise<any>;
-  update(id: number, content: string): Promise<any>;
-  remove(id: number): Promise<any>;
-  listChains(): Promise<any[]>;
-  createChain(name: string, nodes: unknown[]): Promise<any>;
-  updateChain?(id: number, name: string, nodes: unknown[]): Promise<any>;
-  deleteChain(id: number): Promise<any>;
-  getChainByName(name: string): Promise<any>;
-  getClipboardHistory(): Promise<{ id: string; content: string; timestamp: number; pinned: number }[]>;
-  pinClipboardItem(id: string, pinned: boolean): Promise<any>;
-  getSettings(): Promise<any>;
-  saveSettings(s: any): Promise<any>;
-  insertSnippet(text: string): Promise<any>;
-  hideOverlay(): void;
-  getErrorLog(): Promise<string>;
-  exportDiagnostics(): Promise<string>;
-}
+import { logger } from './logger';
+// import { randomUUID } from 'crypto'; // Commented out for browser compatibility
+import type { Snippet, Chain, ChainOption, Settings, ClipboardEntry } from './types'; // Added ChainOption
 
 // Chain execution logic - inlined to avoid module imports in browser
 interface ChoiceOption {
@@ -88,22 +71,15 @@ async function processTextWithChain(
   return current;
 }
 
-// Global window API interface
-interface WindowWithApi extends Window {
-  api: SnippetApi;
-  tray?: { toggleOverlay(): Promise<void> };
-}
-
 // Debug logging
 console.log('Renderer script starting...');
-const win = window as WindowWithApi;
-console.log('window.api available:', !!win.api);
-console.log('window.api methods:', win.api ? Object.keys(win.api) : 'API not available');
+console.log('window.api available:', !!window.api);
+console.log('window.api methods:', window.api ? Object.keys(window.api) : 'API not available');
 
 // Test API immediately
-if (win.api) {
+if (window.api) {
   console.log('Testing API...');
-  win.api.list().then(snippets => {
+  window.api.list().then(snippets => {
     console.log('Initial snippets:', snippets);
   }).catch(error => {
     console.error('API test failed:', error);
@@ -118,18 +94,19 @@ const chainNameInput = document.getElementById(
   'chain-name'
 ) as HTMLInputElement;
 const chainNodesDiv = document.getElementById('chain-nodes') as HTMLDivElement;
-const addTextBtn = document.getElementById('add-text') as HTMLButtonElement;
-const addChoiceBtn = document.getElementById('add-choice') as HTMLButtonElement;
-const addInputBtn = document.getElementById('add-input') as HTMLButtonElement;
-const addChainLinkBtn = document.getElementById('add-chain-link') as HTMLButtonElement;
-const addConditionalBtn = document.getElementById('add-conditional') as HTMLButtonElement;
-const toggleAdvancedBtn = document.getElementById('toggle-advanced') as HTMLButtonElement;
+const addTextBtn = document.getElementById('add-text-node') as HTMLButtonElement;
+const addChoiceBtn = document.getElementById('add-choice-node') as HTMLButtonElement;
+const addInputBtn = document.getElementById('add-input-node') as HTMLButtonElement;
+const addChainLinkBtn = document.getElementById('add-chain-link-node') as HTMLButtonElement;
+const addConditionalBtn = document.getElementById('add-conditional-node') as HTMLButtonElement;
+const toggleAdvancedBtn = document.getElementById('toggle-advanced-chain-controls') as HTMLButtonElement;
 const chainList = document.getElementById('chain-list') as HTMLUListElement;
 const clipboardList = document.getElementById('clipboard-list') as HTMLUListElement;
 const errorDiv = document.getElementById('error-log') as HTMLDivElement;
 const exportBtn = document.getElementById(
   'export-diagnostics'
 ) as HTMLButtonElement;
+const openNewChainManagerBtn = document.getElementById('open-new-chain-manager-btn') as HTMLButtonElement;
 
 // Debug DOM elements
 console.log('DOM Elements found:');
@@ -145,7 +122,7 @@ console.log('chainNodesDiv:', !!chainNodesDiv);
 console.log('clipboardList:', !!clipboardList);
 
 async function refresh() {
-  const snippets = await win.api.list();
+  const snippets = await window.api.list();
   list.innerHTML = '';
   const emptyState = document.getElementById('snippets-empty');
   
@@ -174,7 +151,7 @@ async function refresh() {
       
       // Double click = paste to active application
       content.addEventListener('dblclick', async () => {
-        await win.api.insertSnippet(sn.content);
+        await window.api.insertSnippet(sn.content);
         showFlash('Pasted to active application!');
       });
       
@@ -191,7 +168,7 @@ async function refresh() {
       if (newContent !== null) {
           try {
             console.log('Calling update API...');
-            await win.api.update(sn.id, newContent);
+            await window.api.update(sn.id, newContent);
             console.log('Update successful, refreshing...');
         refresh();
           } catch (error) {
@@ -207,7 +184,7 @@ async function refresh() {
     del.addEventListener('click', async e => {
       e.stopPropagation();
         if (await showConfirm('Delete this snippet?')) {
-          await win.api.remove(sn.id);
+          await window.api.remove(sn.id);
       refresh();
         }
       });
@@ -346,7 +323,7 @@ function createChoiceNodeElement(): HTMLElement {
     chainSelect.innerHTML = '<option value="">Select Chain...</option>';
     
     // Load available chains
-    win.api.listChains().then(chains => {
+    window.api.listChains().then(chains => {
       chains.forEach((chain: any) => {
         const option = document.createElement('option');
         option.value = chain.name;
@@ -421,7 +398,7 @@ function createChainLinkNodeElement(): HTMLElement {
   chainSelect.innerHTML = '<option value="">Select Chain to Execute...</option>';
   
   // Load available chains
-  win.api.listChains().then(chains => {
+  window.api.listChains().then(chains => {
     chains.forEach((chain: any) => {
       const option = document.createElement('option');
       option.value = chain.name;
@@ -465,7 +442,7 @@ function createConditionalNodeElement(): HTMLElement {
   falseChain.innerHTML = '<option value="">If False: Run Chain...</option>';
   
   // Load available chains for both selects
-  win.api.listChains().then(chains => {
+  window.api.listChains().then(chains => {
     chains.forEach((chain: any) => {
       const trueOption = document.createElement('option');
       trueOption.value = chain.name;
@@ -708,7 +685,7 @@ function showAlert(message: string): Promise<void> {
 }
 
 async function refreshClipboard() {
-  const clips = await win.api.getClipboardHistory();
+  const clips = await window.api.getClipboardHistory();
   clipboardList.innerHTML = '';
   const emptyState = document.getElementById('clipboard-empty');
   
@@ -727,7 +704,7 @@ async function refreshClipboard() {
         showFlash('Copied to clipboard!');
       });
       content.addEventListener('dblclick', async () => {
-        await win.api.insertSnippet(clip.content);
+        await window.api.insertSnippet(clip.content);
         showFlash('Pasted to active application!');
       });
       
@@ -738,7 +715,7 @@ async function refreshClipboard() {
       pin.className = clip.pinned ? 'secondary' : '';
       pin.addEventListener('click', async e => {
         e.stopPropagation();
-        await win.api.pinClipboardItem(clip.id, !clip.pinned);
+        await window.api.pinClipboardItem(clip.id, !clip.pinned);
         refreshClipboard();
       });
       
@@ -748,7 +725,7 @@ async function refreshClipboard() {
       addSnippet.addEventListener('click', async e => {
         e.stopPropagation();
         try {
-          await win.api.create(clip.content);
+          await window.api.create(clip.content);
           showFlash('Added to snippets! ✂️');
           refresh(); // Refresh snippets list
         } catch (error) {
@@ -772,7 +749,7 @@ async function refreshClipboard() {
 }
 
 async function refreshChains() {
-  const chains = await win.api.listChains();
+  const chains = await window.api.listChains();
   chainList.innerHTML = '';
   const emptyState = document.getElementById('chains-empty');
   
@@ -791,12 +768,12 @@ async function refreshChains() {
       const run = document.createElement('button');
       run.textContent = 'Run';
       run.addEventListener('click', async () => {
-        const chain = await win.api.getChainByName(ch.name);
+        const chain = await window.api.getChainByName(ch.name);
         if (!chain) return;
         try {
           const output = await executeChain(
             chain,
-            name => win.api.getChainByName(name),
+            name => window.api.getChainByName(name),
             async (q, opts) => {
               const ans = await showPrompt(`${q}`, opts.map(o => o.label).join('/'));
               const found = opts.find(o => o.label === ans);
@@ -817,7 +794,7 @@ async function refreshChains() {
       del.className = 'danger';
       del.addEventListener('click', async () => {
         if (await showConfirm(`Delete chain "${ch.name}"?`)) {
-          await win.api.deleteChain(ch.id);
+          await window.api.deleteChain(ch.id);
           refreshChains();
         }
       });
@@ -837,7 +814,7 @@ form.addEventListener('submit', async e => {
   if (input.value) {
     console.log('Creating snippet:', input.value);
     try {
-      await win.api.create(input.value);
+      await window.api.create(input.value);
       console.log('Snippet created successfully');
     input.value = '';
     refresh();
@@ -906,6 +883,15 @@ toggleAdvancedBtn.addEventListener('click', () => {
   }
 });
 
+openNewChainManagerBtn?.addEventListener('click', () => {
+  if (window.api && typeof window.api.openChainManager === 'function') {
+    window.api.openChainManager();
+  } else {
+    console.error('window.api.openChainManager is not available. Check preload.ts and main.ts IPC setup.');
+    showAlert('Error: Could not open Chain Manager. Functionality not available.');
+  }
+});
+
 chainForm.addEventListener('submit', async e => {
   e.preventDefault();
   const nodes: any[] = [];
@@ -932,7 +918,7 @@ chainForm.addEventListener('submit', async e => {
     }
   });
   if (chainNameInput.value) {
-    await win.api.createChain(chainNameInput.value, nodes);
+    await window.api.createChain(chainNameInput.value, nodes);
     chainNameInput.value = '';
     chainNodesDiv.innerHTML = '';
     refreshChains();
@@ -954,18 +940,35 @@ refreshClipboard().catch(error => {
   showAlert('Failed to load clipboard history. Check console for details.');
 });
 
-async function loadErrors() {
-  const log = await win.api.getErrorLog();
-  if (errorDiv) {
-    errorDiv.textContent = log;
+async function loadErrorLog() {
+  logger.info('Loading error log...');
+  if (!errorDiv) return;
+  try {
+    const log = await window.api.getErrorLog();
+    errorDiv.textContent = Array.isArray(log) ? log.join('\n') : (log || 'No errors logged.');
+    if (log && log.length > 0) {
+      errorDiv.scrollTop = errorDiv.scrollHeight;
+    }
+  } catch (e: unknown) {
+    let message = 'Unknown error while loading error log.';
+    if (e instanceof Error) {
+      message = e.message;
+    }
+    logger.error('Failed to load error log:', message);
+    errorDiv.textContent = 'Failed to load error log: ' + message;
   }
 }
 
-loadErrors();
+loadErrorLog();
 
 exportBtn?.addEventListener('click', async () => {
-  const path = await win.api.exportDiagnostics();
-  await showAlert(`Diagnostics exported to ${path}`);
+  try {
+    const path = await window.api.exportDiagnostics();
+    await showAlert(`Diagnostics exported to ${path}`);
+  } catch (error) {
+    console.error('Failed to export diagnostics:', error);
+    showAlert('Failed to export diagnostics. Check console for details.');
+  }
 });
 
 // Settings functionality
@@ -980,8 +983,9 @@ const testOverlayBtn = document.getElementById('test-overlay') as HTMLButtonElem
 const toggleThemeBtn = document.getElementById('toggle-theme') as HTMLButtonElement;
 
 async function loadSettings() {
+  console.log('Loading settings...');
   try {
-    const settings = await win.api.getSettings();
+    const settings = await window.api.getSettings();
     
     if (edgePositionSelect) {
       edgePositionSelect.value = settings.edgeHover.position;
@@ -1035,7 +1039,7 @@ saveSettingsBtn?.addEventListener('click', async () => {
       }
     };
     
-    await win.api.saveSettings(settings);
+    await window.api.saveSettings(settings);
     showFlash('Settings saved! 💾');
   } catch (error) {
     console.error('Failed to save settings:', error);
@@ -1051,10 +1055,10 @@ testOverlayBtn?.addEventListener('click', () => {
 // Toggle theme
 toggleThemeBtn?.addEventListener('click', async () => {
   try {
-    const currentSettings = await win.api.getSettings();
+    const currentSettings = await window.api.getSettings();
     const newTheme = currentSettings.theme === 'light' ? 'dark' : 'light';
     
-    await win.api.saveSettings({ theme: newTheme });
+    await window.api.saveSettings({ theme: newTheme });
     document.body.classList.toggle('light', newTheme === 'light');
     
     showFlash(`Switched to ${newTheme} theme! 🎨`);
@@ -1064,8 +1068,7 @@ toggleThemeBtn?.addEventListener('click', async () => {
 });
 
 // Handle settings navigation from tray
-const { ipcRenderer } = require('electron');
-ipcRenderer.on('navigate-to-settings', () => {
+window.api.on('navigate-to-settings', () => {
   // Find settings section and scroll to it
   const settingsHeaders = Array.from(document.querySelectorAll('h1')).find(h => h.textContent?.includes('Settings'));
   if (settingsHeaders) {
@@ -1077,54 +1080,33 @@ ipcRenderer.on('navigate-to-settings', () => {
 // Add sample snippets for testing if none exist
 async function addSampleContent() {
   try {
-    const snippets = await win.api.list();
-    const chains = await win.api.listChains();
-    
-    // Add sample snippets if none exist
-    if (snippets.length === 0) {
-      const sampleSnippets = [
-        "Hello! This is [?:CustomerName] from SnipFlow. How can I help you today?",
-        "Thank you for calling SnipFlow! My name is [?:AgentName] and I'll be assisting you.",
-        "I understand your concern. Let me check that for you right away.",
-        "Is there anything else I can help you with today?",
-        "Thank you for your patience. I've found the information you requested.",
-        "Your ticket number is [?:TicketNumber]. Please keep this for your records."
-      ];
+    // Check if data already exists to prevent duplication
+    const existingSnippets = await window.api.list();
+    const existingChains = await window.api.listChains();
+
+    if (existingSnippets.length === 0 && existingChains.length === 0) {
+      await window.api.create('Hello from SnipFlow! This is a sample snippet.');
+      await window.api.create('Another snippet: use {{input}} for placeholders.');
+
+      await window.api.createChain('Sample Chain', [
+        { id: window.crypto.randomUUID(), title: 'Welcome', body: 'Hello from SnipFlow! This is the first option.' },
+        { id: window.crypto.randomUUID(), title: 'User Input', body: 'Your name is [?:What is your name?].' },
+        { id: window.crypto.randomUUID(), title: 'Next Step', body: 'Consider creating another chain called [Chain:FollowUp].' }
+      ], 'A simple chain to demonstrate functionality.');
       
-      for (const snippet of sampleSnippets) {
-        await win.api.create(snippet);
-      }
-      showFlash('Added sample snippets for testing! ✂️');
+      await window.api.createChain('FollowUp', [
+        { id: window.crypto.randomUUID(), title: 'Follow Up Greeting', body: 'Nice to meet you after the first chain!' }
+      ], 'A follow-up chain.');
+
+      logger.info('[renderer.ts] Added sample content.');
+      refresh();
+      refreshChains();
+    } else {
+      logger.info('[renderer.ts] Sample content already exists or some data present, not adding samples.');
     }
-    
-    // Add sample chain if none exist  
-    if (chains.length === 0) {
-      const sampleChain = [
-        { 
-          type: 'text', 
-          content: 'Hello! This is Mark from Business Place. ' 
-        },
-        { 
-          type: 'choice', 
-          content: 'Are you interested in our service today?',
-          options: [
-            { label: 'Yes', text: 'Great! Let me explain our service options...' },
-            { label: 'No', text: 'No problem! Can I schedule a callback for later?' },
-            { label: 'Maybe', text: 'I understand. Let me share some quick information...' }
-          ]
-        }
-      ];
-      
-      await win.api.createChain('Greeting', sampleChain);
-      showFlash('Added sample chain for testing! 🔗');
-    }
-    
-    // Refresh all data
-    await refresh();
-    await refreshChains();
-    await refreshClipboard();
   } catch (error) {
-    console.error('Failed to add sample content:', error);
+    logger.error('[renderer.ts] Failed to add sample content:', error);
+    showAlert('Could not add sample content. Check console for details.');
   }
 }
 

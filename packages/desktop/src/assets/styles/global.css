@@ -1,0 +1,295 @@
+/* Global styles for SnipFlow Desktop */
+
+body {
+  /* Styles from the previous index.html minimal body style */
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex; /* Optional: if App component should fill space */
+  flex-direction: column; /* Optional */
+}
+
+/* General App Structure Styles from App.tsx */
+.app-container {
+  display: flex;
+  height: 100vh;
+  font-family: Arial, sans-serif;
+}
+
+.sidebar-container {
+  width: 220px; /* Slightly wider for comfort */
+  min-width: 200px;
+  padding: 20px;
+  border-right: 1px solid #333; /* Darker border */
+  height: 100vh;
+  background-color: #252526; /* Darker sidebar */
+  color: #ccc;
+}
+
+.sidebar-container h3 {
+  color: #4a90e2; /* Accent color for title */
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.5em;
+}
+
+.content-area {
+  flex-grow: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background-color: #1e1e1e; /* Slightly different dark for content */
+}
+
+/* Form Elements */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+textarea {
+  background-color: #3a3a3a;
+  border: 1px solid #555;
+  color: #e0e0e0;
+  padding: 10px;
+  border-radius: 4px;
+  width: 100%; /* Default to full width, can be overridden by parent flex/grid */
+  font-size: 14px;
+  margin-bottom: 10px; /* Spacing for stacked inputs */
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Button Styles */
+button, .button {
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+  margin-right: 8px; /* Default margin for buttons next to each other */
+  margin-bottom: 8px; /* Default margin for stacked buttons */
+  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+button:last-child, .button:last-child {
+  margin-right: 0;
+}
+
+.button-primary {
+  background-color: #4a90e2;
+  color: white;
+}
+.button-primary:hover {
+  background-color: #357abd;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.button-secondary {
+  background-color: #6c757d; /* Bootstrap secondary color */
+  color: white;
+}
+.button-secondary:hover {
+  background-color: #5a6268;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.button-danger {
+  background-color: #dc3545; /* Bootstrap danger color */
+  color: white;
+}
+.button-danger:hover {
+  background-color: #c82333;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* List Styles */
+.item-list {
+  list-style: none;
+  padding: 0;
+}
+
+.item-list-item {
+  background-color: #2d2d2d; /* Darker item background */
+  border: 1px solid #404040;
+  border-radius: 4px;
+  padding: 12px 15px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.item-list-item:hover {
+  background-color: #3a3a3a;
+  border-color: #555;
+}
+
+.item-content {
+  flex-grow: 1;
+  margin-right: 15px;
+  word-break: break-word; /* Prevent long unbroken strings from overflowing */
+}
+
+.item-actions {
+  display: flex;
+  gap: 8px; /* Spacing between action buttons */
+  flex-shrink: 0; /* Prevent action buttons from shrinking too much */
+}
+
+.item-timestamp {
+  font-size: 0.85em;
+  color: #888;
+  margin-right: 15px;
+  white-space: nowrap;
+}
+
+/* General View Styling */
+.view-container {
+  padding: 0; /* App.tsx contentStyle already has padding */
+}
+
+.view-container h2 {
+  color: #4a90e2;
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
+}
+
+.empty-state-message {
+  color: #777;
+  font-style: italic;
+  margin-top: 20px;
+}
+
+/* Form Group for consistent spacing */
+.form-group {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center; /* Align items if input and button are on the same line */
+}
+
+.form-group input[type="text"] {
+  flex-grow: 1; /* Allow input to take available space */
+  margin-bottom: 0; /* Remove default margin if part of form-group */
+}
+
+.form-group button {
+  margin-bottom: 0; /* Remove default margin if part of form-group */
+  flex-shrink: 0;
+}
+
+/* Utility for screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Modal Styles */
+.modal-content {
+  background-color: #2d2d2d; /* Consistent with item backgrounds */
+  color: #e0e0e0;
+  padding: 25px;
+  border-radius: 8px;
+  min-width: 320px;
+  max-width: 500px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border: 1px solid #404040;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #404040;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.6em;
+  color: #4a90e2; /* Accent color */
+}
+
+.modal-close-button {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 2em;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 5px;
+  line-height: 1;
+}
+.modal-close-button:hover {
+  color: #e0e0e0;
+}
+
+.modal-body {
+  margin-bottom: 25px;
+}
+
+.modal-body p {
+  margin-top: 0;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+.modal-body p strong {
+  color: #4a90e2; /* Accent for important text in modal */
+}
+
+/* Modal uses global input/textarea styles if not overridden by children */
+.modal-body input[type="text"],
+.modal-body textarea {
+  margin-bottom: 0; /* Remove extra margin if it's the only element or last */
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px; /* Spacing between footer buttons */
+}
+
+.modal-footer button {
+  margin-right: 0; /* Remove default right margin from global button style */
+  margin-bottom: 0; /* Remove default bottom margin */
+}
+
+/* Add other global styles here */ 

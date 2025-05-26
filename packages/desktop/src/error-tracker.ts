@@ -19,6 +19,13 @@ export function initErrorTracking() {
 }
 
 function dumpCrash(err: unknown) {
+  if (!CRASH_DIR) {
+    console.error(
+      'CRASH_DIR is not available. Cannot dump crash report to file. Error details:',
+      err
+    );
+    return;
+  }
   const name = `crash-${Date.now()}.log`;
   if (!existsSync(CRASH_DIR)) mkdirSync(CRASH_DIR, { recursive: true });
   const path = join(CRASH_DIR, name);

@@ -11,8 +11,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
     "removeComments": false,
     "strict": true,
     "noImplicitAny": true,
@@ -27,7 +25,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
   "exclude": [
