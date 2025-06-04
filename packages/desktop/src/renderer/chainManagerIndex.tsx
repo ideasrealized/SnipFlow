@@ -1,16 +1,16 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import ChainManagerView from './components/ChainManagerView';
 import '../assets/styles/global.css';
 
 const rootElement = document.getElementById('chain-manager-root');
 
 if (rootElement) {
-  ReactDOM.render(
+  const root = createRoot(rootElement);
+  root.render(
     <React.StrictMode>
       <ChainManagerView />
-    </React.StrictMode>,
-    rootElement
+    </React.StrictMode>
   );
 } else {
   console.error('Root element #chain-manager-root not found in chainManager.html');

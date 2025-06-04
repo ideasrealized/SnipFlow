@@ -40,7 +40,7 @@ async function executeChain(
   inputProvider: InputProvider
 ): Promise<string> {
   let result = '';
-  for (const node of chain.nodes) {
+  for (const node of chain.options) {
     if (node.type === 'text') {
       result += await processTextWithChain(node.content, loadChain, choiceProvider, inputProvider);
     } else if (node.type === 'choice') {
@@ -89,17 +89,6 @@ if (window.api) {
 const form = document.getElementById('add-form') as HTMLFormElement;
 const input = document.getElementById('content') as HTMLInputElement;
 const list = document.getElementById('list') as HTMLUListElement;
-const chainForm = document.getElementById('chain-form') as HTMLFormElement;
-const chainNameInput = document.getElementById(
-  'chain-name'
-) as HTMLInputElement;
-const chainNodesDiv = document.getElementById('chain-nodes') as HTMLDivElement;
-const addTextBtn = document.getElementById('add-text-node') as HTMLButtonElement;
-const addChoiceBtn = document.getElementById('add-choice-node') as HTMLButtonElement;
-const addInputBtn = document.getElementById('add-input-node') as HTMLButtonElement;
-const addChainLinkBtn = document.getElementById('add-chain-link-node') as HTMLButtonElement;
-const addConditionalBtn = document.getElementById('add-conditional-node') as HTMLButtonElement;
-const toggleAdvancedBtn = document.getElementById('toggle-advanced-chain-controls') as HTMLButtonElement;
 const chainList = document.getElementById('chain-list') as HTMLUListElement;
 const clipboardList = document.getElementById('clipboard-list') as HTMLUListElement;
 const errorDiv = document.getElementById('error-log') as HTMLDivElement;
@@ -112,13 +101,7 @@ const openNewChainManagerBtn = document.getElementById('open-new-chain-manager-b
 console.log('DOM Elements found:');
 console.log('form:', !!form);
 console.log('input:', !!input);
-console.log('addTextBtn:', !!addTextBtn);
-console.log('addChoiceBtn:', !!addChoiceBtn);
-console.log('addInputBtn:', !!addInputBtn);
-console.log('addChainLinkBtn:', !!addChainLinkBtn);
-console.log('addConditionalBtn:', !!addConditionalBtn);
-console.log('toggleAdvancedBtn:', !!toggleAdvancedBtn);
-console.log('chainNodesDiv:', !!chainNodesDiv);
+console.log('chainList:', !!chainList);
 console.log('clipboardList:', !!clipboardList);
 
 async function refresh() {
@@ -168,12 +151,17 @@ async function refresh() {
       if (newContent !== null) {
           try {
             console.log('Calling update API...');
-            await window.api.update(sn.id, newContent);
-            console.log('Update successful, refreshing...');
-        refresh();
+            const updatedSnippet = await window.api.update(sn.id, { content: newContent });
+            if (updatedSnippet) {
+              console.log('Update successful, refreshing...');
+              refresh();
+            } else {
+              console.error('Failed to update snippet, server returned no snippet.');
+              errorDiv.textContent = 'Failed to update snippet. Please check logs.';
+            }
           } catch (error) {
             console.error('Edit failed:', error);
-            await showAlert(`Edit failed: ${error}`);
+            await showAlert(`Edit failed: ${error instanceof Error ? error.message : String(error)}`);
           }
       }
     });
@@ -196,272 +184,6 @@ async function refresh() {
       list.appendChild(li);
     });
   }
-}
-
-function createTextNodeElement(): HTMLElement {
-  const div = document.createElement('div');
-  div.className = 'chain-node';
-  div.dataset.type = 'text';
-  const input = document.createElement('textarea');
-  input.placeholder = 'Type your text here... Use [Chain:Name] to link to other chains!';
-  input.style.cssText = 'width: 100%; height: 60px; padding: 8px; font-family: inherit; resize: vertical;';
-  
-  const removeBtn = document.createElement('button');
-  removeBtn.textContent = '×';
-  removeBtn.className = 'danger';
-  removeBtn.style.float = 'right';
-  removeBtn.addEventListener('click', () => div.remove());
-  
-  div.appendChild(removeBtn);
-  div.appendChild(input);
-  return div;
-}
-
-let isAdvancedMode = false;
-
-function createSimpleChoiceNodeElement(): HTMLElement {
-  const div = document.createElement('div');
-  div.className = 'chain-node';
-  div.dataset.type = 'choice';
-  
-  const removeBtn = document.createElement('button');
-  removeBtn.textContent = '×';
-  removeBtn.className = 'danger';
-  removeBtn.style.float = 'right';
-  removeBtn.addEventListener('click', () => div.remove());
-  
-  const q = document.createElement('input');
-  q.placeholder = 'What question do you want to ask?';
-  q.type = 'text';
-  
-  const opts = document.createElement('div');
-  opts.className = 'options';
-  
-  const add = document.createElement('button');
-  add.textContent = '+ Add Choice';
-  add.type = 'button';
-  add.className = 'secondary';
-  add.addEventListener('click', () => {
-    const opt = document.createElement('div');
-    opt.className = 'option';
-    opt.style.cssText = 'display: flex; gap: 10px; margin-bottom: 5px; align-items: center;';
-    
-    const label = document.createElement('input');
-    label.placeholder = 'Choice (e.g., "Yes")';
-    label.type = 'text';
-    label.style.cssText = 'flex: 1;';
-    
-    const text = document.createElement('input');
-    text.placeholder = 'What to output (e.g., "Great! Continuing...")';
-    text.type = 'text';
-    text.style.cssText = 'flex: 2;';
-    
-    const removeOpt = document.createElement('button');
-    removeOpt.textContent = '×';
-    removeOpt.className = 'danger';
-    removeOpt.addEventListener('click', () => opt.remove());
-    
-    opt.appendChild(label);
-    opt.appendChild(text);
-    opt.appendChild(removeOpt);
-    opts.appendChild(opt);
-  });
-  
-  div.appendChild(removeBtn);
-  div.appendChild(q);
-  div.appendChild(opts);
-  div.appendChild(add);
-  return div;
-}
-
-function createChoiceNodeElement(): HTMLElement {
-  const div = document.createElement('div');
-  div.className = 'chain-node';
-  div.dataset.type = 'choice';
-  
-  const removeBtn = document.createElement('button');
-  removeBtn.textContent = '×';
-  removeBtn.className = 'danger';
-  removeBtn.style.float = 'right';
-  removeBtn.addEventListener('click', () => div.remove());
-  
-  const q = document.createElement('input');
-  q.placeholder = 'Question';
-  q.type = 'text';
-  
-  const opts = document.createElement('div');
-  opts.className = 'options';
-  
-  const add = document.createElement('button');
-  add.textContent = 'Add Option';
-  add.type = 'button';
-  add.className = 'secondary';
-  add.addEventListener('click', () => {
-    const opt = document.createElement('div');
-    opt.className = 'option';
-    
-    const label = document.createElement('input');
-    label.placeholder = 'Choice Label';
-    label.type = 'text';
-    label.style.cssText = 'flex: 1; margin-right: 5px;';
-    
-    const actionSelect = document.createElement('select');
-    actionSelect.style.cssText = 'margin-right: 5px; background: #3a3a3a; color: #e0e0e0; border: 1px solid #555;';
-    actionSelect.innerHTML = `
-      <option value="text">Output Text</option>
-      <option value="chain">Run Chain</option>
-      <option value="both">Text + Chain</option>
-    `;
-    
-    const text = document.createElement('input');
-    text.placeholder = 'Text Output';
-    text.type = 'text';
-    text.style.cssText = 'flex: 1; margin-right: 5px;';
-    
-    const chainSelect = document.createElement('select');
-    chainSelect.style.cssText = 'margin-right: 5px; background: #3a3a3a; color: #e0e0e0; border: 1px solid #555; display: none;';
-    chainSelect.innerHTML = '<option value="">Select Chain...</option>';
-    
-    // Load available chains
-    window.api.listChains().then(chains => {
-      chains.forEach((chain: any) => {
-        const option = document.createElement('option');
-        option.value = chain.name;
-        option.textContent = chain.name;
-        chainSelect.appendChild(option);
-      });
-    });
-    
-    const removeOpt = document.createElement('button');
-    removeOpt.textContent = '×';
-    removeOpt.className = 'danger';
-    removeOpt.addEventListener('click', () => opt.remove());
-    
-    actionSelect.addEventListener('change', () => {
-      const value = actionSelect.value;
-      text.style.display = (value === 'text' || value === 'both') ? 'block' : 'none';
-      chainSelect.style.display = (value === 'chain' || value === 'both') ? 'block' : 'none';
-    });
-    
-    opt.appendChild(label);
-    opt.appendChild(actionSelect);
-    opt.appendChild(text);
-    opt.appendChild(chainSelect);
-    opt.appendChild(removeOpt);
-    opts.appendChild(opt);
-  });
-  
-  div.appendChild(removeBtn);
-  div.appendChild(q);
-  div.appendChild(opts);
-  div.appendChild(add);
-  return div;
-}
-
-function createInputNodeElement(): HTMLElement {
-  const div = document.createElement('div');
-  div.className = 'chain-node';
-  div.dataset.type = 'input';
-  
-  const removeBtn = document.createElement('button');
-  removeBtn.textContent = '×';
-  removeBtn.className = 'danger';
-  removeBtn.style.float = 'right';
-  removeBtn.addEventListener('click', () => div.remove());
-  
-  const input = document.createElement('input');
-  input.placeholder = 'What do you want to ask the user? (e.g., "What\'s your name?")';
-  input.type = 'text';
-  
-  div.appendChild(removeBtn);
-  div.appendChild(input);
-  return div;
-}
-
-function createChainLinkNodeElement(): HTMLElement {
-  const div = document.createElement('div');
-  div.className = 'chain-node';
-  div.dataset.type = 'chain-link';
-  
-  const removeBtn = document.createElement('button');
-  removeBtn.textContent = '×';
-  removeBtn.className = 'danger';
-  removeBtn.style.float = 'right';
-  removeBtn.addEventListener('click', () => div.remove());
-  
-  const label = document.createElement('div');
-  label.textContent = 'Execute Chain:';
-  label.style.cssText = 'margin-bottom: 10px; font-weight: bold;';
-  
-  const chainSelect = document.createElement('select');
-  chainSelect.style.cssText = 'width: 100%; padding: 8px; background: #3a3a3a; color: #e0e0e0; border: 1px solid #555; border-radius: 4px;';
-  chainSelect.innerHTML = '<option value="">Select Chain to Execute...</option>';
-  
-  // Load available chains
-  window.api.listChains().then(chains => {
-    chains.forEach((chain: any) => {
-      const option = document.createElement('option');
-      option.value = chain.name;
-      option.textContent = `🔗 ${chain.name}`;
-      chainSelect.appendChild(option);
-    });
-  });
-  
-  div.appendChild(removeBtn);
-  div.appendChild(label);
-  div.appendChild(chainSelect);
-  return div;
-}
-
-function createConditionalNodeElement(): HTMLElement {
-  const div = document.createElement('div');
-  div.className = 'chain-node';
-  div.dataset.type = 'conditional';
-  
-  const removeBtn = document.createElement('button');
-  removeBtn.textContent = '×';
-  removeBtn.className = 'danger';
-  removeBtn.style.float = 'right';
-  removeBtn.addEventListener('click', () => div.remove());
-  
-  const label = document.createElement('div');
-  label.textContent = 'Conditional Logic:';
-  label.style.cssText = 'margin-bottom: 10px; font-weight: bold;';
-  
-  const condition = document.createElement('input');
-  condition.placeholder = 'Condition (e.g., {PreviousChoice} == "Yes")';
-  condition.type = 'text';
-  condition.style.cssText = 'width: 100%; margin-bottom: 10px;';
-  
-  const trueChain = document.createElement('select');
-  trueChain.style.cssText = 'width: 48%; margin-right: 4%; background: #3a3a3a; color: #e0e0e0; border: 1px solid #555;';
-  trueChain.innerHTML = '<option value="">If True: Run Chain...</option>';
-  
-  const falseChain = document.createElement('select');
-  falseChain.style.cssText = 'width: 48%; background: #3a3a3a; color: #e0e0e0; border: 1px solid #555;';
-  falseChain.innerHTML = '<option value="">If False: Run Chain...</option>';
-  
-  // Load available chains for both selects
-  window.api.listChains().then(chains => {
-    chains.forEach((chain: any) => {
-      const trueOption = document.createElement('option');
-      trueOption.value = chain.name;
-      trueOption.textContent = `✅ ${chain.name}`;
-      trueChain.appendChild(trueOption);
-      
-      const falseOption = document.createElement('option');
-      falseOption.value = chain.name;
-      falseOption.textContent = `❌ ${chain.name}`;
-      falseChain.appendChild(falseOption);
-    });
-  });
-  
-  div.appendChild(removeBtn);
-  div.appendChild(label);
-  div.appendChild(condition);
-  div.appendChild(trueChain);
-  div.appendChild(falseChain);
-  return div;
 }
 
 function showFlash(message: string) {
@@ -826,102 +548,12 @@ form.addEventListener('submit', async e => {
   }
 });
 
-addTextBtn.addEventListener('click', () => {
-  console.log('Add Text Node button clicked!');
-  const node = createTextNodeElement();
-  console.log('Created text node:', node);
-  chainNodesDiv.appendChild(node);
-  console.log('Text node added to chainNodesDiv');
-});
-
-addChoiceBtn.addEventListener('click', () => {
-  console.log('Add Choice Node button clicked!');
-  const node = isAdvancedMode ? createChoiceNodeElement() : createSimpleChoiceNodeElement();
-  console.log('Created choice node:', node);
-  chainNodesDiv.appendChild(node);
-  console.log('Choice node added to chainNodesDiv');
-});
-
-addInputBtn.addEventListener('click', () => {
-  console.log('Add Input Node button clicked!');
-  const node = createInputNodeElement();
-  console.log('Created input node:', node);
-  chainNodesDiv.appendChild(node);
-  console.log('Input node added to chainNodesDiv');
-});
-
-addChainLinkBtn.addEventListener('click', () => {
-  console.log('Add Chain Link button clicked!');
-  const node = createChainLinkNodeElement();
-  console.log('Created chain link node:', node);
-  chainNodesDiv.appendChild(node);
-  console.log('Chain link node added to chainNodesDiv');
-});
-
-addConditionalBtn.addEventListener('click', () => {
-  console.log('Add Conditional button clicked!');
-  const node = createConditionalNodeElement();
-  console.log('Created conditional node:', node);
-  chainNodesDiv.appendChild(node);
-  console.log('Conditional node added to chainNodesDiv');
-});
-
-toggleAdvancedBtn.addEventListener('click', () => {
-  isAdvancedMode = !isAdvancedMode;
-  const advancedControls = document.querySelector('.advanced-controls') as HTMLElement;
-  
-  if (isAdvancedMode) {
-    advancedControls.style.display = 'block';
-    toggleAdvancedBtn.textContent = '🔧 Simple Mode';
-    toggleAdvancedBtn.style.backgroundColor = '#e74c3c';
-    showFlash('Advanced Mode: ON - Power user features unlocked! 🚀');
-  } else {
-    advancedControls.style.display = 'none';
-    toggleAdvancedBtn.textContent = '🔧 Advanced Mode';
-    toggleAdvancedBtn.style.backgroundColor = '#666';
-    showFlash('Simple Mode: ON - Clean and easy interface! ✨');
-  }
-});
-
 openNewChainManagerBtn?.addEventListener('click', () => {
   if (window.api && typeof window.api.openChainManager === 'function') {
     window.api.openChainManager();
   } else {
     console.error('window.api.openChainManager is not available. Check preload.ts and main.ts IPC setup.');
     showAlert('Error: Could not open Chain Manager. Functionality not available.');
-  }
-});
-
-chainForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  const nodes: any[] = [];
-  chainNodesDiv.querySelectorAll<HTMLElement>('div[data-type]').forEach(el => {
-    const type = el.dataset.type;
-    if (type === 'text') {
-      const input = el.querySelector('input') as HTMLInputElement;
-      nodes.push({ type: 'text', content: input.value });
-    } else if (type === 'choice') {
-      const question = el.querySelector('input') as HTMLInputElement;
-      const optsEls = el.querySelectorAll('.option');
-      const opts: any[] = [];
-      optsEls.forEach(op => {
-        const [label, text] = op.querySelectorAll('input');
-        opts.push({
-          label: (label as HTMLInputElement).value,
-          text: (text as HTMLInputElement).value,
-        });
-      });
-      nodes.push({ type: 'choice', content: question.value, options: opts });
-    } else if (type === 'input') {
-      const inputEl = el.querySelector('input') as HTMLInputElement;
-      nodes.push({ type: 'input', content: inputEl.value });
-    }
-  });
-  if (chainNameInput.value) {
-    await window.api.createChain(chainNameInput.value, nodes);
-    chainNameInput.value = '';
-    chainNodesDiv.innerHTML = '';
-    refreshChains();
   }
 });
 

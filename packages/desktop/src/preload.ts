@@ -23,11 +23,10 @@ contextBridge.exposeInMainWorld('api', {
   // Specific, strongly-typed methods (existing)
   list: () => ipcRenderer.invoke('list-snippets'),
   create: (content: string) => ipcRenderer.invoke('create-snippet', content),
-  update: (id: number, content: string) =>
-    ipcRenderer.invoke('update-snippet', id, content),
+  update: (id: number, data: { content?: string, isPinned?: boolean }) => ipcRenderer.invoke('update-snippet', id, data),
   remove: (id: number) => ipcRenderer.invoke('delete-snippet', id),
   listChains: () => ipcRenderer.invoke('list-chains'),
-  createChain: (name: string, nodes: any[], description?: string) => ipcRenderer.invoke('create-chain', name, nodes, description),
+  createChain: (name: string, options: any[], description?: string, tags?: string[], layoutData?: string, isPinned?: boolean) => ipcRenderer.invoke('create-chain', name, options, description, tags, layoutData, isPinned),
   getChainByName: (name: string) => ipcRenderer.invoke('get-chain-by-name', name),
   getChainById: (id: number) => ipcRenderer.invoke('get-chain-by-id', id),
   updateChain: (id: number, data: any) => ipcRenderer.invoke('update-chain', id, data),
@@ -39,6 +38,12 @@ contextBridge.exposeInMainWorld('api', {
   insertSnippet: (content: string) => ipcRenderer.send('insert-snippet', content),
   getErrorLog: () => ipcRenderer.invoke('get-error-log'),
   exportDiagnostics: () => ipcRenderer.invoke('export-diagnostics'),
+
+  // Pinning methods
+  toggleSnippetPin: (id: number, isPinned: boolean) => ipcRenderer.invoke('toggle-snippet-pin', id, isPinned),
+  toggleChainPin: (id: number, isPinned: boolean) => ipcRenderer.invoke('toggle-chain-pin', id, isPinned),
+  getPinnedItems: () => ipcRenderer.invoke('get-pinned-items'),
+  getStarterChains: () => ipcRenderer.invoke('get-starter-chains'),
 
   // Overlay specific
   registerOverlayPinnedItemsProvider: (provider: () => Promise<PinnedItem[]>) => {
@@ -52,7 +57,14 @@ contextBridge.exposeInMainWorld('api', {
   hideOverlay: () => ipcRenderer.send('hide-overlay-signal'),
 
   // Function to open the new Chain Manager window
-  openChainManager: () => ipcRenderer.send('open-chain-manager'),
+  openChainManager: () => ipcRenderer.invoke('open-chain-manager'),
+
+  // NEW: Export/Import functionality
+  exportChain: (chainId: number, options?: any) => ipcRenderer.invoke('export-chain', chainId, options),
+  exportChains: (chainIds: number[], options?: any) => ipcRenderer.invoke('export-chains', chainIds, options),
+  importChainsFromFile: (filePath: string, options?: any) => ipcRenderer.invoke('import-chains-from-file', filePath, options),
+  importChainsWithDialog: () => ipcRenderer.invoke('import-chains-with-dialog'),
+  previewImport: (filePath: string) => ipcRenderer.invoke('preview-import', filePath),
 });
 
 // Deprecate or remove window.events if all functionality is moved to window.api

@@ -2,6 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';" />
     <title>SnipFlow Desktop</title>
     <!-- 
     <style>
@@ -230,6 +231,39 @@
         margin-bottom: 15px;
       }
       
+      .settings-form {
+        background: #333;
+        border-radius: 6px;
+        padding: 15px;
+        margin: 15px 0;
+        border: 1px solid #555;
+      }
+      
+      .form-group {
+        margin-bottom: 15px;
+      }
+      
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #ccc;
+        font-weight: 500;
+      }
+      
+      .form-group select,
+      .form-group input[type="range"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #555;
+        border-radius: 4px;
+        background: #2a2a2a;
+        color: #e0e0e0;
+      }
+      
+      .form-group input[type="checkbox"] {
+        margin-right: 8px;
+      }
+      
       .status-bar {
         background: #333;
         padding: 10px;
@@ -279,6 +313,19 @@
       .light button.secondary:hover {
         background: #e0e0e0;
       }
+      .light .settings-form {
+        background: #fff;
+        border-color: #ddd;
+      }
+      .light .form-group label {
+        color: #333;
+      }
+      .light .form-group select,
+      .light .form-group input[type="range"] {
+        background: #fff;
+        border-color: #ccc;
+        color: #333;
+      }
       /* End of UNCOMMENTED ORIGINAL STYLES */
     </style>
   </head>
@@ -303,46 +350,61 @@
         <ul id="list" class="item-list"></ul>
       </div>
 
-      <div class="section">
+      <div class="section clipboard-history-section">
         <h2>Clipboard History</h2>
         <div id="clipboard-empty" class="empty-state" style="display:none;">Clipboard is empty.</div>
         <ul id="clipboard-list" class="item-list"></ul>
       </div>
       
-      <div class="section chain-builder-section">
-        <h2>SnipChain Builder (Legacy)</h2>
-        <form id="chain-form">
-          <div class="form-group">
-            <input type="text" id="chain-name" placeholder="Chain Name (e.g., 'My Greeting')" required />
-          </div>
-          <div id="chain-nodes">
-            <!-- Nodes will be added here -->
-          </div>
-          <div class="controls">
-            <button type="button" id="add-text-node">Add Text Node</button>
-            <button type="button" id="add-input-node">Add User Input Node</button>
-            <button type="button" id="add-choice-node">Add Choice Node</button>
-            <button type="button" id="add-chain-link-node">Add Chain Link</button>
-            <button type="button" id="add-conditional-node">Add Conditional</button>
-            <button type="button" id="toggle-advanced-chain-controls">🔧 Advanced Mode</button>
-            <button type="button" id="open-new-chain-manager-btn" class="secondary">Open New Chain Manager</button>
-          </div>
-          <div class="advanced-controls" style="display: none;">
-            <h4>Advanced Chain Controls (Work in Progress)</h4>
-            <p>Future options for fine-tuning chain execution will appear here.</p>
-            <p>Example: Configure error handling, delays, or parameter mapping.</p>
-          </div>
-          <button type="submit">Save Chain</button>
-        </form>
+      <div class="section existing-chains-section">
         <h2>Existing SnipChains</h2>
-        <div id="chains-empty" class="empty-state" style="display:none;">No chains defined.</div>
+        <div class="controls" style="margin-bottom: 15px;">
+          <button type="button" id="open-new-chain-manager-btn" class="secondary">Open New Chain Manager</button>
+        </div>
+        <div id="chains-empty" class="empty-state" style="display:none;">No chains defined. Open the Chain Manager to create one.</div>
         <ul id="chain-list" class="item-list"></ul>
       </div>
 
-      <div class="section">
+      <div class="section settings-diagnostics-section">
         <h2>Settings & Diagnostics</h2>
-        <!-- Placeholder for settings controls that renderer.ts might populate -->
-        <div id="settings-controls-placeholder"></div> 
+        
+        <div class="settings-form">
+          <h3>Edge Hover Settings</h3>
+          <div class="form-group">
+            <label for="edge-hover-enabled">
+              <input type="checkbox" id="edge-hover-enabled" checked> Enable Edge Hover
+            </label>
+          </div>
+          
+          <div class="form-group">
+            <label for="edge-position">Edge Position:</label>
+            <select id="edge-position">
+              <option value="left-center">Left Center</option>
+              <option value="right-center">Right Center</option>
+              <option value="top-left">Top Left</option>
+              <option value="top-right">Top Right</option>
+              <option value="bottom-left">Bottom Left</option>
+              <option value="bottom-right">Bottom Right</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="trigger-size">Trigger Size: <span id="trigger-size-value">20px</span></label>
+            <input type="range" id="trigger-size" min="10" max="100" value="20">
+          </div>
+          
+          <div class="form-group">
+            <label for="hover-delay">Hover Delay: <span id="hover-delay-value">200ms</span></label>
+            <input type="range" id="hover-delay" min="50" max="1000" value="200">
+          </div>
+          
+          <div class="form-group">
+            <button id="save-settings">Save Settings</button>
+            <button id="test-overlay" class="secondary">Test Overlay</button>
+            <button id="toggle-theme" class="secondary">Toggle Theme</button>
+          </div>
+        </div>
+        
         <button id="export-diagnostics">Export Diagnostics</button>
         <h3>Error Log</h3>
         <div id="error-log" class="diagnostics"></div>

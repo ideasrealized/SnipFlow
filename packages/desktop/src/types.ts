@@ -3,6 +3,9 @@ import { randomUUID } from 'crypto';
 export interface Snippet {
   id: number;
   content: string;
+  createdAt?: string; // Or Date
+  updatedAt?: string; // Or Date
+  isPinned?: boolean;
 }
 
 export interface GenericApi {
@@ -13,22 +16,26 @@ export interface GenericApi {
 
 export interface SnippetApi {
   list: () => Promise<Snippet[]>;
-  create: (content: string) => Promise<{ id: number; content: string }>;
-  update: (id: number, content: string) => Promise<void>;
+  create: (content: string) => Promise<Snippet>;
+  update: (id: number, data: { content?: string, isPinned?: boolean }) => Promise<{success: boolean}>;
   remove: (id: number) => Promise<void>;
   listChains: () => Promise<Chain[]>;
   createChain: (
     name: string, 
     options: ChainOption[], 
     description?: string | null, 
-    tags?: string[] | null, 
+    tags?: string[] | undefined, 
     layoutData?: string | null, 
-    pinned?: boolean
+    isPinned?: boolean
   ) => Promise<Chain | null>;
-  updateChain: (id: number, data: Partial<Omit<Chain, 'id'>>) => Promise<{success: boolean; error?: string}>;
-  deleteChain: (id: number) => Promise<void>;
+  updateChain: (id: number, data: Partial<Omit<Chain, 'id' | 'options' | 'tags'> & { options?: ChainOption[], tags?: string[], isPinned?: boolean }>) => Promise<{success: boolean; error?: string}>;
+  deleteChain: (id: number) => Promise<{success: boolean, error?: string}>;
   getChainByName: (name: string) => Promise<Chain | null>;
   getChainById: (id: number) => Promise<Chain | null>;
+  toggleSnippetPin: (id: number, isPinned: boolean) => Promise<{success: boolean; error?: string}>;
+  toggleChainPin: (id: number, isPinned: boolean) => Promise<{success: boolean; error?: string}>;
+  getPinnedItems: () => Promise<PinnedItem[]>;
+  getStarterChains: () => Promise<Chain[]>;
   getClipboardHistory: () => Promise<ClipboardEntry[]>;
   pinClipboardItem: (id: string, pinned: boolean) => Promise<void>;
   getSettings: () => Promise<Settings>;
@@ -38,6 +45,11 @@ export interface SnippetApi {
   getErrorLog: () => Promise<string[]>;
   exportDiagnostics: () => Promise<string>;
   openChainManager: () => void;
+  exportChain: (chainId: number, options?: ExportOptions) => Promise<string>;
+  exportChains: (chainIds: number[], options?: ExportOptions) => Promise<string>;
+  importChainsFromFile: (filePath: string, options?: ImportOptions) => Promise<ImportResult>;
+  importChainsWithDialog: () => Promise<ImportResult>;
+  previewImport: (filePath: string) => Promise<ImportPreview>;
 }
 
 export type WindowApi = GenericApi & SnippetApi;
@@ -62,14 +74,16 @@ export interface ChainOption {
 export interface Chain {
   id: number;
   name: string;
-  options: ChainOption[];
-  nodes: string;
-  description?: string | null;
-  tags?: string[] | null;
-  layoutData?: string | null;
+  description?: string;
+  options: ChainOption[]; 
+  tags?: string[];
+  layoutData?: string; 
+  createdAt?: string;
+  updatedAt?: string;
+  isPinned?: boolean;
   autoExecute?: boolean;
-  lastExecuted?: number | null;
-  pinned?: boolean;
+  lastExecuted?: number;
+  isStarterChain?: boolean; // New field for Starter Chains overlay
 }
 
 export interface ClipboardEntry {
@@ -118,12 +132,13 @@ export interface InputProvider {
   presentInput: (prompt: string, initialValue?: string) => Promise<string | null>;
 }
 
-// Placeholder type for items that can be pinned to the overlay
+// New Type for Pinned Items in Overlay
 export interface PinnedItem {
-  id: string | number; // Can be snippet ID (number) or clipboard ID (string)
-  type: 'snippet' | 'clipboard' | 'chain'; // To distinguish the source
-  content: string; // The text content to display/paste
-  name?: string; // Optional name, e.g., for snippets or chains
+  id: number;
+  type: 'snippet' | 'chain';
+  name: string; // Chain name or snippet content (or a preview)
+  content?: string; // Full content if snippet, undefined for chain
+  isPinned: boolean; // Should always be true for items in this list
 }
 
 declare global {
@@ -132,4 +147,57 @@ declare global {
     events: EventsApi;
     tray: TrayApi;
   }
+}
+
+// NEW: Export/Import interfaces
+export interface ExportOptions {
+  includeMetadata?: boolean;
+  anonymize?: boolean;
+  format?: 'snip' | 'json';
+}
+
+export interface ImportOptions {
+  conflictResolution?: 'skip' | 'rename' | 'replace';
+  selectedChains?: string[];
+}
+
+export interface ImportResult {
+  success: boolean;
+  imported: number;
+  skipped: number;
+  errors: string[];
+  chains: Chain[];
+  canceled?: boolean;
+}
+
+export interface ImportPreview {
+  chains: ExportedChain[];
+  totalChains: number;
+  conflicts: string[];
+  fileSize: number;
+}
+
+export interface SnipFileFormat {
+  version: string;
+  exportDate: string;
+  exportedBy?: string;
+  chains: ExportedChain[];
+  metadata: {
+    totalChains: number;
+    categories: string[];
+    tags: string[];
+  };
+}
+
+export interface ExportedChain {
+  name: string;
+  description?: string;
+  options: ChainOption[];
+  tags?: string[];
+  isStarterChain?: boolean;
+  metadata: {
+    originalId?: number;
+    createdAt?: string;
+    updatedAt?: string;
+  };
 }

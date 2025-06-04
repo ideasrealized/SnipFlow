@@ -5,55 +5,90 @@ import HybridChainEditorView from './HybridChainEditorView';
 const ChainManagerView: React.FC = () => {
   const [selectedChainId, setSelectedChainId] = React.useState<number | null>(null);
 
-  // Styles (inline for brevity, consider moving to CSS files/modules)
-  const styles = {
-    container: {
-      display: 'flex',
-      flexDirection: 'row' as 'row',
-      height: '100vh', // Or parent height
-      padding: '10px',
-      boxSizing: 'border-box' as 'border-box',
-      fontFamily: 'Arial, sans-serif', // Basic font
-    },
-    sidebar: {
-      width: '300px',
-      minWidth: '250px', // Prevent too much squishing
-      borderRight: '1px solid #ccc',
-      paddingRight: '10px',
-      marginRight: '10px',
-      overflowY: 'auto' as 'auto',
-    },
-    mainContent: {
-      flexGrow: 1,
-      overflowY: 'auto' as 'auto',
-      paddingLeft: '10px',
-    },
-    placeholderText: {
-      color: '#777',
-      textAlign: 'center' as 'center',
-      marginTop: '50px',
-      fontSize: '1.1em'
+  const handleChainSelected = (id: number) => {
+    // Handle clear selection signal
+    if (id === -1) {
+      setSelectedChainId(null);
+    } else {
+      setSelectedChainId(id);
     }
   };
 
-  const handleChainSelected = (id: number) => {
-    setSelectedChainId(id);
+  const containerStyles: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'row',
+    height: '100vh',
+    background: '#020617',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    color: '#F8FAFC',
   };
 
-  // Callback if a chain is deleted, to potentially clear selection
-  // This can be passed down to ChainListPanel if needed, for it to call when a delete happens.
-  // For now, if a selected chain is deleted, the HybridChainEditorView might show an error or "not found".
+  const sidebarStyles: React.CSSProperties = {
+    width: '400px',
+    minWidth: '350px',
+    maxWidth: '500px',
+    borderRight: '1px solid #1E293B',
+    padding: '16px',
+    overflowY: 'auto',
+    background: '#0F172A',
+  };
+
+  const mainContentStyles: React.CSSProperties = {
+    flexGrow: 1,
+    overflowY: 'auto',
+    padding: '16px',
+    background: '#020617',
+  };
+
+  const placeholderStyles: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    color: '#64748B',
+    textAlign: 'center',
+  };
+
+  const placeholderIconStyles: React.CSSProperties = {
+    fontSize: '64px',
+    marginBottom: '16px',
+    opacity: 0.5,
+  };
+
+  const placeholderTitleStyles: React.CSSProperties = {
+    fontSize: '24px',
+    fontWeight: '600',
+    marginBottom: '8px',
+    color: '#94A3B8',
+  };
+
+  const placeholderTextStyles: React.CSSProperties = {
+    fontSize: '16px',
+    lineHeight: '1.5',
+    maxWidth: '400px',
+  };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.sidebar}>
-        <ChainListPanel onSelectChain={handleChainSelected} />
+    <div style={containerStyles}>
+      <div style={sidebarStyles}>
+        <ChainListPanel 
+          onSelectChain={handleChainSelected} 
+          selectedChainId={selectedChainId}
+        />
       </div>
-      <div style={styles.mainContent}>
+      <div style={mainContentStyles}>
         {selectedChainId ? (
           <HybridChainEditorView chainId={selectedChainId} />
         ) : (
-          <p style={styles.placeholderText}>Select a chain from the list to edit, or create a new one.</p>
+          <div style={placeholderStyles}>
+            <div style={placeholderIconStyles}>🔗</div>
+            <h2 style={placeholderTitleStyles}>Welcome to Chain Manager</h2>
+            <p style={placeholderTextStyles}>
+              Select a chain from the sidebar to start editing, or create a new chain to get started. 
+              Chain Manager provides powerful tools for creating and managing your SnipChain workflows.
+            </p>
+          </div>
         )}
       </div>
     </div>

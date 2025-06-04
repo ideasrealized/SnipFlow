@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ChainOption } from '../../types'; // Import ChainOption
+import type { Chain, ChainOption } from '../../types'; // Import ChainOption
 
 interface ChainVisualizerMiniMapProps {
   currentChainOptions: ChainOption[];
@@ -10,8 +10,8 @@ interface ChainVisualizerMiniMapProps {
 
 // Basic regex to find chain links and input prompts in the body
 // Using new RegExp for potentially stabler parsing by TypeScript
-const CHAIN_LINK_REGEX = new RegExp('\\\[Chain:([a-zA-Z0-9_\\-\\s]+?)\\\]', 'g');
-const INPUT_PROMPT_REGEX = new RegExp('\\\[\\?:([a-zA-Z0-9_\\-\\s]+?)\\\]', 'g');
+const CHAIN_LINK_REGEX = /\[Chain:([a-zA-Z0-9_\-\s]+?)\]/g;
+const INPUT_PROMPT_REGEX = /\[\?:([a-zA-Z0-9_\-\s]+?)\]/g;
 
 const ChainVisualizerMiniMap: React.FC<ChainVisualizerMiniMapProps> = ({ 
   currentChainOptions, 

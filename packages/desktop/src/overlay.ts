@@ -9,6 +9,7 @@ interface ExtendedOverlayApi {
   getSettings: () => Promise<any>; // Assuming Settings type is complex
   getClipboardHistory: () => Promise<any[]>; // Assuming Clip type is complex
   listChains: () => Promise<Chain[]>;
+  getStarterChains: () => Promise<Chain[]>; // New method for starter chains
   list: () => Promise<Snippet[]>; // For traditional snippets
   insertSnippet: (content: string) => Promise<void>;
   hideOverlay?: () => void; // Optional as it might be main->overlay only
@@ -20,7 +21,7 @@ interface ExtendedOverlayApi {
 const api = window.api as unknown as ExtendedOverlayApi;
 
 const container = document.getElementById('container') as HTMLDivElement;
-const pinnedGrid = document.getElementById('pinned-grid') as HTMLDivElement;
+const starterGrid = document.getElementById('starter-grid') as HTMLDivElement;
 const snippetsGrid = document.getElementById('snippets-grid') as HTMLDivElement;
 const chainsGrid = document.getElementById('chains-grid') as HTMLDivElement;
 const historyGrid = document.getElementById('history-grid') as HTMLDivElement;
@@ -29,6 +30,7 @@ const flash = document.getElementById('flash') as HTMLDivElement;
 
 let snippets: Snippet[] = [];
 let chains: Chain[] = [];
+let starterChains: Chain[] = [];
 let clips: {
   id: string;
   content: string;
@@ -65,10 +67,33 @@ async function loadData() {
     
     try {
       chains = await api.listChains(); // This should now include the 'pinned' status
-      logger.info('[overlay.ts] Chains loaded:', chains ? chains.length : 0, 'chains. Pinned example:', chains?.find(c => c.pinned));
+      logger.info('[overlay.ts] Chains loaded:', chains ? chains.length : 0, 'chains. Pinned example:', chains?.find(c => c.isPinned));
     } catch (e) { 
       logger.warn('[overlay.ts] Could not load chains:', e);
       chains = []; 
+    }
+
+    try {
+      starterChains = await api.getStarterChains(); // Load starter chains
+      logger.info('[overlay.ts] Starter chains loaded:', starterChains ? starterChains.length : 0, 'starter chains');
+      
+      // Debug: If no starter chains, create a test one for debugging
+      if (starterChains.length === 0) {
+        logger.warn('[overlay.ts] No starter chains found. Creating debug test data...');
+        starterChains.push({
+          id: 999,
+          name: 'Debug Test Chain',
+          description: 'Test starter chain for debugging',
+          options: [{ id: '1', title: 'Test Option', body: 'This is a test starter chain' }],
+          isPinned: false,
+          isStarterChain: true,
+          tags: [],
+          layoutData: '{}'
+        });
+      }
+    } catch (e) { 
+      logger.warn('[overlay.ts] Could not load starter chains:', e);
+      starterChains = []; 
     }
     
     // Fetch traditional snippets if still used/needed by a grid
@@ -81,7 +106,7 @@ async function loadData() {
       logger.warn('[overlay.ts] Could not load traditional snippets:', e);
       snippets = [];
     }
-
+    
     renderAll();
   } catch (error) {
     logger.error('[overlay.ts] Failed to load data:', error);
@@ -89,13 +114,13 @@ async function loadData() {
 }
 
 function renderAll(filter = '') {
-  renderPinnedItems(filter);
+  renderStarterChains(filter);
   renderSnippets(filter);
   renderChains(filter);
   renderHistory(filter);
 }
 
-function createGridBox(title: string, preview: string, className = '', onClick: () => void) {
+function createGridBox(title: string, preview: string, className = '', onClick: () => void, chain?: Chain) {
   const box = document.createElement('div');
   box.className = `grid-box ${className}`;
   
@@ -109,50 +134,87 @@ function createGridBox(title: string, preview: string, className = '', onClick: 
   
   box.appendChild(titleEl);
   box.appendChild(previewEl);
+  
+  // Add chain link indicator if chain contains chain references
+  if (chain) {
+    let totalChainLinks = 0;
+    chain.options?.forEach(option => {
+      const chainMatches = (option.body || '').match(/\[Chain:[^\]]+\]/g);
+      if (chainMatches) {
+        totalChainLinks += chainMatches.length;
+      }
+    });
+    
+    if (totalChainLinks > 0) {
+      const linkIndicator = document.createElement('div');
+      linkIndicator.textContent = `🔗 ${totalChainLinks}`;
+      linkIndicator.style.cssText = 'position: absolute; top: 4px; right: 4px; background: var(--accent); color: white; font-size: 9px; padding: 2px 4px; border-radius: 8px; font-weight: bold; z-index: 10;';
+      box.style.position = 'relative';
+      box.appendChild(linkIndicator);
+    }
+  }
+  
   box.addEventListener('click', onClick);
+  
+  // Add right-click context menu for chains
+  if (chain) {
+    box.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showChainContextMenu(e, chain);
+    });
+  }
   
   return box;
 }
 
-function renderPinnedItems(filter = '') {
+function renderStarterChains(filter = '') {
   const term = filter.toLowerCase();
-  const grid = pinnedGrid;
+  const grid = starterGrid;
   
   // Clear existing boxes and empty states more simply
-  grid.querySelectorAll('.grid-box, .empty-state').forEach(box => box.remove());
+  grid.querySelectorAll('.grid-box, .empty-state').forEach((box: any) => box.remove());
 
-  const pinnedChains = chains.filter(c => c.pinned && 
-    (c.name.toLowerCase().includes(term) || (c.description && c.description.toLowerCase().includes(term)))
+  const filteredStarters = starterChains.filter(c => 
+    c.name.toLowerCase().includes(term) || (c.description && c.description.toLowerCase().includes(term))
   );
 
-  logger.info('[overlay.ts] Rendering pinned chains. Count:', pinnedChains.length);
+  logger.info('[overlay.ts] Rendering starter chains. Count:', filteredStarters.length);
 
-  if (pinnedChains.length > 0) {
-    pinnedChains.slice(0, 6).forEach(chain => { 
+  if (filteredStarters.length > 0) {
+    filteredStarters.slice(0, 6).forEach(chain => { 
       const title = chain.name.slice(0, 25) + (chain.name.length > 25 ? '...' : '');
+      
+      // Debug logging for description display
+      logger.info(`[DEBUG] Chain: ${chain.name}`);
+      logger.info(`[DEBUG] Description: "${chain.description}"`);
+      logger.info(`[DEBUG] First option title: "${chain.options && chain.options[0] ? chain.options[0].title : 'N/A'}"`);
+      
+      // Use chain description as preview text, with fallback to first option
       let previewText = chain.description || 'No description';
-      if (chain.options && chain.options.length > 0 && chain.options[0]) {
-        if (chain.options[0].title) {
-          previewText = chain.options[0].title;
-        } else if (chain.options[0].body) {
-          previewText = chain.options[0].body.substring(0,40) + (chain.options[0].body.length > 40 ? "..." : "");
+      if (!chain.description || chain.description.trim() === '') {
+        // Fallback to first option if no description
+        if (chain.options && chain.options.length > 0 && chain.options[0]) {
+          if (chain.options[0].title) {
+            previewText = chain.options[0].title;
+          } else if (chain.options[0].body) {
+            previewText = chain.options[0].body.substring(0,40) + (chain.options[0].body.length > 40 ? "..." : "");
+          }
         }
       }
-      logger.info(`[overlay.ts] Pinned Item Data - ID: ${chain.id}, Name: ${chain.name}, Title: '${title}', Preview: '${previewText}'`);
       
-      const box = createGridBox(title, previewText, 'chain pinned', () => handleChainSelect(chain));
-      logger.info('[overlay.ts] Created box for pinned item:', box ? 'Valid box' : 'Box creation FAILED');
-
-      if (box) { // Apply debug styles if box is valid
-        box.style.border = '2px dashed lime';
-        box.style.backgroundColor = 'rgba(0,255,0,0.2)';
-        box.style.minHeight = '50px';
-        box.style.color = 'white'; // Ensure text is visible against potentially dark lime
-        const itemTitleEl = box.querySelector('.item-title') as HTMLElement;
-        if(itemTitleEl) itemTitleEl.style.color = 'white';
-        const itemPreviewEl = box.querySelector('.item-preview') as HTMLElement;
-        if(itemPreviewEl) itemPreviewEl.style.color = 'lightgrey';
+      logger.info(`[DEBUG] Preview text result: "${previewText}"`);
+      logger.info(`[DEBUG] Chain isStarterChain: ${chain.isStarterChain}`);
+      logger.info(`[DEBUG] Chain options count: ${chain.options ? chain.options.length : 0}`);
+      
+      // Truncate preview text if too long
+      if (previewText.length > 50) {
+        previewText = previewText.substring(0, 47) + '...';
       }
+      
+      logger.info(`[overlay.ts] Starter Chain Data - ID: ${chain.id}, Name: ${chain.name}, Title: '${title}', Preview: '${previewText}'`);
+      
+      const box = createGridBox(title, previewText, 'chain starter', () => handleChainSelect(chain), chain);
+      logger.info('[overlay.ts] Created box for starter chain:', box ? 'Valid box' : 'Box creation FAILED');
 
       grid.appendChild(box);
     });
@@ -160,8 +222,8 @@ function renderPinnedItems(filter = '') {
   
   grid.style.display = 'grid'; 
   
-  if (pinnedChains.length === 0) {
-    const emptyBox = createGridBox('No Pinned Items', 'Pin chains to see them here', 'empty-state', () => {});
+  if (filteredStarters.length === 0) {
+    const emptyBox = createGridBox('No Starter Chains', 'Mark chains as starters to see them here', 'empty-state', () => {});
     emptyBox.style.opacity = '0.7';
     emptyBox.style.cursor = 'default';
     grid.appendChild(emptyBox);
@@ -199,7 +261,7 @@ function renderChains(filter = '') {
   // Clear existing boxes and empty states more simply
   grid.querySelectorAll('.grid-box, .empty-state').forEach(box => box.remove());
   
-  const nonPinnedChains = chains.filter(ch => !ch.pinned && 
+  const nonPinnedChains = chains.filter(ch => !ch.isPinned && 
     (ch.name.toLowerCase().includes(term) || 
     (ch.description && ch.description.toLowerCase().includes(term)))
   );
@@ -209,15 +271,26 @@ function renderChains(filter = '') {
   if (nonPinnedChains.length > 0) {
     nonPinnedChains.slice(0, 6).forEach(chain => { 
       const title = chain.name.slice(0, 20) + (chain.name.length > 20 ? '...' : '');
+      
+      // Use chain description as preview text, with fallback to first option
       let previewText = chain.description || 'No description';
-      if (chain.options && chain.options.length > 0 && chain.options[0]) {
-        if (chain.options[0].title) {
-          previewText = chain.options[0].title;
-        } else if (chain.options[0].body) {
-          previewText = chain.options[0].body.substring(0,40) + (chain.options[0].body.length > 40 ? "..." : "");
+      if (!chain.description || chain.description.trim() === '') {
+        // Fallback to first option if no description
+        if (chain.options && chain.options.length > 0 && chain.options[0]) {
+          if (chain.options[0].title) {
+            previewText = chain.options[0].title;
+          } else if (chain.options[0].body) {
+            previewText = chain.options[0].body.substring(0,40) + (chain.options[0].body.length > 40 ? "..." : "");
+          }
         }
       }
-      const box = createGridBox(title, previewText, 'chain', () => handleChainSelect(chain));
+      
+      // Truncate preview text if too long
+      if (previewText.length > 40) {
+        previewText = previewText.substring(0, 37) + '...';
+      }
+      
+      const box = createGridBox(title, previewText, 'chain', () => handleChainSelect(chain), chain);
       grid.appendChild(box);
     });
   }
@@ -297,16 +370,63 @@ function presentChoice(
 
 function presentInput(promptText: string): Promise<string> {
   return new Promise(resolve => {
+    // Set input pending flag to prevent overlay from closing
+    isInputPending = true;
+    (window as any).isInputPending = true;
+    logger.info('[overlay.ts] Input pending - overlay close protection enabled');
+    
     chainRunner.innerHTML = '';
+    
+    // Create prompt text
     const p = document.createElement('p');
     p.textContent = promptText;
+    p.style.cssText = 'margin-bottom: 10px; color: var(--text); font-size: 14px;';
+    
+    // Create input field with styling
     const input = document.createElement('input');
+    input.type = 'text';
+    input.style.cssText = 'width: 100%; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px; margin-bottom: 10px; outline: none;';
+    input.placeholder = 'Enter value...';
+    
+    // Create OK button
     const btn = document.createElement('button');
     btn.textContent = 'OK';
-    btn.addEventListener('click', () => resolve(input.value));
+    btn.style.cssText = 'background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;';
+    
+    // Function to submit the input
+    const submitInput = () => {
+      const value = input.value.trim();
+      logger.info(`[overlay.ts] Input submitted: "${value}"`);
+      
+      // Clear input pending flag
+      isInputPending = false;
+      (window as any).isInputPending = false;
+      logger.info('[overlay.ts] Input completed - overlay close protection disabled');
+      
+      resolve(value);
+    };
+    
+    // Add event listeners
+    btn.addEventListener('click', submitInput);
+    
+    // Enter key support
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitInput();
+      }
+    });
+    
+    // Append elements
     chainRunner.appendChild(p);
     chainRunner.appendChild(input);
     chainRunner.appendChild(btn);
+    
+    // Auto-focus the input field after a brief delay to ensure it's rendered
+    setTimeout(() => {
+      input.focus();
+      logger.info('[overlay.ts] Input field auto-focused');
+    }, 50);
   });
 }
 
@@ -323,36 +443,896 @@ async function handleSnippetSelect(snippet: Snippet) {
   api.hideOverlay?.();
 }
 
-async function handleChainSelect(chain: Chain) {
-  logger.info('[overlay.ts] handleChainSelect called for chain:', chain.name, 'ID:', chain.id, 'Pinned:', chain.pinned);
-  let contentToExecute = '';
-  
-  if (chain.options && chain.options.length > 0 && chain.options[0] && typeof chain.options[0].body === 'string') {
-    contentToExecute = chain.options[0].body;
-    logger.info(`[overlay.ts] Executing first option of chain "${chain.name}". Body (first 100 chars):`, contentToExecute.substring(0, 100));
-  } else {
-    // Fallback: if chain has no options or first option has no body or is not a string.
-    // This behavior might need refinement. For now, just insert the chain name as a link.
-    // This would allow chainService to try and resolve it again if it's a direct link like [Chain:MyChainName]
-    contentToExecute = `[Chain:${chain.name}]`; 
-    logger.warn(`[overlay.ts] Chain "${chain.name}" (ID: ${chain.id}) has no executable options or first option body is invalid. Defaulting to insert its link: ${contentToExecute}`);
-    // As an alternative, we could show an error or do nothing.
-    // For now, we proceed to processSnippet which might handle the [Chain:Name] string.
-  }
+// Global variable to track current chain being processed
+let currentChain: Chain | null = null;
 
-  try {
-    // processSnippet uses processTextWithChain from chainService, which handles [Chain:] links and [?:] prompts
-    const finalOutput = await processSnippet(contentToExecute); 
-    logger.info(`[overlay.ts] Chain "${chain.name}" processed. Output (first 100 chars):`, finalOutput.substring(0,100));
-    await api.insertSnippet(finalOutput);
-    showFlash();
-  } catch (error) {
-    logger.error(`[overlay.ts] Error processing or inserting chain "${chain.name}" (ID: ${chain.id}):`, error);
-    // TODO: Optionally display error to user in overlay or via flash message
-  } finally {
-    // Ensure overlay hides even if there was an error during processing/insertion
-    api.hideOverlay?.(); 
+// Global variables to track interactive states (prevents overlay from closing)
+let isInputPending: boolean = false;
+let isInQuickEdit: boolean = false;
+let isInContextMenu: boolean = false;
+
+// Expose to window for main process access
+(window as any).isInputPending = false;
+(window as any).isInQuickEdit = false;
+(window as any).isInContextMenu = false;
+
+async function handleChainSelect(chain: Chain) {
+  logger.info('[overlay.ts] handleChainSelect called for chain:', chain.name, 'ID:', chain.id, 'isStarterChain:', chain.isStarterChain);
+  
+  // For starter chains, show their options instead of executing directly
+  if (chain.isStarterChain) {
+    logger.info(`[overlay.ts] Showing options for starter chain "${chain.name}"`);
+    
+    if (chain.options && chain.options.length > 0) {
+      if (chain.options.length === 1 && chain.options[0]) {
+        // If only one option, execute it directly
+        logger.info(`[overlay.ts] Single option found, executing directly: "${chain.options[0].title}"`);
+        await handleChainOptionSelect(chain, chain.options[0]);
+      } else {
+        // Multiple options - show them in the overlay
+        logger.info(`[overlay.ts] Multiple options (${chain.options.length}) found, showing options overlay`);
+        showChainOptionsOverlay(chain);
+      }
+    } else {
+      // No options - fallback to chain name
+      logger.warn(`[overlay.ts] Starter chain "${chain.name}" has no options. Using chain name as content.`);
+      api.insertSnippet(chain.name);
+      api.hideOverlay?.();
+    }
+  } else {
+    // For regular chains, just copy the content directly too
+    logger.info(`[overlay.ts] Regular chain "${chain.name}" - copying content directly`);
+    
+    let contentToExecute = '';
+    
+    if (chain.options && chain.options.length > 0 && chain.options[0] && typeof chain.options[0].body === 'string') {
+      contentToExecute = chain.options[0].body;
+    } else {
+      contentToExecute = chain.name; 
+    }
+
+    try {
+      api.insertSnippet(contentToExecute);
+      api.hideOverlay?.();
+    } catch (error) {
+      logger.error(`[overlay.ts] Error processing chain "${chain.name}":`, error);
+    }
   }
+}
+
+function showChainOptionsOverlay(chain: Chain) {
+  logger.info(`[overlay.ts] Displaying options overlay for chain: ${chain.name}`);
+  currentChain = chain;
+  
+  // Hide starter grid and show chain runner for options
+  if (starterGrid) starterGrid.style.display = 'none';
+  if (chainRunner) {
+    chainRunner.style.display = 'block';
+    chainRunner.innerHTML = ''; // Clear previous content
+    
+    // Add header
+    const header = document.createElement('div');
+    header.style.cssText = 'font-weight: bold; margin-bottom: 15px; color: var(--accent); font-size: 14px;';
+    header.textContent = `${chain.name} Options:`;
+    chainRunner.appendChild(header);
+    
+    // Add back button
+    const backBtn = document.createElement('button');
+    backBtn.textContent = '← Back to Starters';
+    backBtn.style.cssText = 'background: var(--hover); color: var(--text); border: 1px solid var(--accent); padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 10px; font-size: 12px;';
+    backBtn.addEventListener('click', () => {
+      showStarterChainsView();
+    });
+    chainRunner.appendChild(backBtn);
+    
+    // Add options as buttons
+    chain.options.forEach((option, index) => {
+      const optionBtn = document.createElement('button');
+      optionBtn.textContent = option.title || `Option ${index + 1}`;
+      optionBtn.style.cssText = 'background: var(--accent); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; margin: 5px; display: block; width: calc(100% - 10px); text-align: left; transition: background 0.2s;';
+      
+      // Add hover effect
+      optionBtn.addEventListener('mouseenter', () => {
+        optionBtn.style.background = '#357abd';
+      });
+      optionBtn.addEventListener('mouseleave', () => {
+        optionBtn.style.background = 'var(--accent)';
+      });
+      
+      optionBtn.addEventListener('click', () => {
+        handleChainOptionSelect(chain, option);
+      });
+      
+      chainRunner.appendChild(optionBtn);
+    });
+  }
+}
+
+function showStarterChainsView() {
+  logger.info('[overlay.ts] Returning to starter chains view');
+  currentChain = null;
+  
+  // Clear interactive flags
+  isInQuickEdit = false;
+  (window as any).isInQuickEdit = false;
+  logger.info('[overlay.ts] Quick edit closed - overlay close protection disabled');
+  
+  // Hide chain runner and show starter grid
+  if (chainRunner) chainRunner.style.display = 'none';
+  if (starterGrid) starterGrid.style.display = 'grid';
+}
+
+function showChainContextMenu(event: MouseEvent, chain: Chain) {
+  logger.info(`[overlay.ts] Showing context menu for chain: ${chain.name}`);
+  
+  // Set context menu flag to prevent overlay from closing
+  isInContextMenu = true;
+  (window as any).isInContextMenu = true;
+  logger.info('[overlay.ts] Context menu opened - overlay close protection enabled');
+  
+  // Remove any existing context menu
+  const existingMenu = document.getElementById('chain-context-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+  
+  // Create context menu
+  const menu = document.createElement('div');
+  menu.id = 'chain-context-menu';
+  menu.style.cssText = `
+    position: fixed;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 8px 0;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 2147483647;
+    min-width: 180px;
+    backdrop-filter: blur(12px);
+  `;
+  
+  // Position menu at mouse location with boundary checking
+  const menuWidth = 180; // min-width from CSS
+  const menuHeight = 200; // estimated height for 5 items
+  
+  let x = event.clientX;
+  let y = event.clientY;
+  
+  // Prevent menu from going off-screen to the right
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth - 10;
+  }
+  
+  // Prevent menu from going off-screen to the bottom
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight - 10;
+  }
+  
+  // Ensure menu doesn't go off-screen to the left or top
+  x = Math.max(10, x);
+  y = Math.max(10, y);
+  
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  
+  // Create menu items
+  const menuItems = [
+    {
+      label: '✏️ Quick Edit',
+      action: () => showQuickEditOverlay(chain)
+    },
+    {
+      label: '🔧 Edit in Manager',
+      action: () => openChainManager(chain)
+    },
+    {
+      label: '📋 Copy Chain Reference',
+      action: () => copyChainReference(chain)
+    },
+    {
+      label: '🔄 Duplicate Chain',
+      action: () => duplicateChain(chain)
+    },
+    {
+      label: chain.isStarterChain ? '⭐ Remove from Starters' : '🚀 Add to Starters',
+      action: () => toggleStarterStatus(chain)
+    }
+  ];
+  
+  menuItems.forEach(item => {
+    const menuItem = document.createElement('div');
+    menuItem.textContent = item.label;
+    menuItem.style.cssText = `
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 13px;
+      color: var(--text);
+    `;
+    
+    menuItem.addEventListener('mouseenter', () => {
+      menuItem.style.background = 'var(--hover)';
+    });
+    
+    menuItem.addEventListener('mouseleave', () => {
+      menuItem.style.background = 'transparent';
+    });
+    
+    menuItem.addEventListener('click', () => {
+      item.action();
+      menu.remove();
+      // Clear context menu flag
+      isInContextMenu = false;
+      (window as any).isInContextMenu = false;
+      logger.info('[overlay.ts] Context menu closed - overlay close protection disabled');
+    });
+    
+    menu.appendChild(menuItem);
+  });
+  
+  // Add to document
+  document.body.appendChild(menu);
+  
+  // Remove menu when clicking elsewhere
+  const removeMenu = (e: Event) => {
+    if (!menu.contains(e.target as Node)) {
+      menu.remove();
+      document.removeEventListener('click', removeMenu);
+      // Clear context menu flag
+      isInContextMenu = false;
+      (window as any).isInContextMenu = false;
+      logger.info('[overlay.ts] Context menu closed - overlay close protection disabled');
+    }
+  };
+  
+  setTimeout(() => {
+    document.addEventListener('click', removeMenu);
+  }, 100);
+}
+
+function showQuickEditOverlay(chain: Chain) {
+  logger.info(`[overlay.ts] Opening quick edit for chain: ${chain.name}`);
+  
+  // Set quick edit flag to prevent overlay from closing
+  isInQuickEdit = true;
+  (window as any).isInQuickEdit = true;
+  logger.info('[overlay.ts] Quick edit opened - overlay close protection enabled');
+  
+  // Hide starter grid and show chain runner for editing
+  if (starterGrid) starterGrid.style.display = 'none';
+  if (chainRunner) {
+    chainRunner.style.display = 'block';
+    chainRunner.innerHTML = '';
+    
+    // Create quick edit interface
+    const header = document.createElement('div');
+    header.style.cssText = 'font-weight: bold; margin-bottom: 15px; color: var(--accent); font-size: 14px;';
+    header.textContent = `Quick Edit: ${chain.name}`;
+    chainRunner.appendChild(header);
+    
+    // Back button
+    const backBtn = document.createElement('button');
+    backBtn.textContent = '← Back to Starters';
+    backBtn.style.cssText = 'background: var(--hover); color: var(--text); border: 1px solid var(--accent); padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 15px; font-size: 12px;';
+    backBtn.addEventListener('click', showStarterChainsView);
+    chainRunner.appendChild(backBtn);
+    
+    // Chain name input
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Chain Name:';
+    nameLabel.style.cssText = 'display: block; margin-bottom: 5px; font-size: 12px; color: var(--text);';
+    chainRunner.appendChild(nameLabel);
+    
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = chain.name;
+    nameInput.style.cssText = 'width: 100%; padding: 8px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); margin-bottom: 15px;';
+    chainRunner.appendChild(nameInput);
+    
+    // Description input
+    const descLabel = document.createElement('label');
+    descLabel.textContent = 'Description:';
+    descLabel.style.cssText = 'display: block; margin-bottom: 5px; font-size: 12px; color: var(--text);';
+    chainRunner.appendChild(descLabel);
+    
+    const descInput = document.createElement('textarea');
+    descInput.value = chain.description || '';
+    descInput.style.cssText = 'width: 100%; padding: 8px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); margin-bottom: 15px; min-height: 60px; resize: vertical;';
+    chainRunner.appendChild(descInput);
+    
+    // Options section
+    const optionsLabel = document.createElement('div');
+    optionsLabel.textContent = 'Options:';
+    optionsLabel.style.cssText = 'font-weight: bold; margin-bottom: 10px; font-size: 12px; color: var(--text);';
+    chainRunner.appendChild(optionsLabel);
+    
+    // Options container
+    const optionsContainer = document.createElement('div');
+    optionsContainer.style.cssText = 'margin-bottom: 15px;';
+    chainRunner.appendChild(optionsContainer);
+    
+    // Render existing options
+    chain.options.forEach((option, index) => {
+      createOptionEditor(optionsContainer, option, index);
+    });
+    
+    // Add new option button
+    const addOptionBtn = document.createElement('button');
+    addOptionBtn.textContent = '+ Add Option';
+    addOptionBtn.style.cssText = 'background: var(--hover); color: var(--text); border: 1px solid var(--accent); padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 15px; font-size: 12px;';
+    addOptionBtn.addEventListener('click', () => {
+      const newOption = { id: `new-${Date.now()}`, title: '', body: '' };
+      createOptionEditor(optionsContainer, newOption, optionsContainer.children.length);
+      // Re-append the add button at the end
+      optionsContainer.appendChild(addOptionBtn);
+    });
+    optionsContainer.appendChild(addOptionBtn);
+    
+    // Save button
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = '💾 Save Changes';
+    saveBtn.style.cssText = 'background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-right: 10px; font-size: 13px;';
+    saveBtn.addEventListener('click', () => {
+      saveQuickEditChanges(chain, nameInput, descInput, optionsContainer);
+    });
+    chainRunner.appendChild(saveBtn);
+    
+    // Cancel button
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = '❌ Cancel';
+    cancelBtn.style.cssText = 'background: var(--hover); color: var(--text); border: 1px solid var(--accent); padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 13px;';
+    cancelBtn.addEventListener('click', showStarterChainsView);
+    chainRunner.appendChild(cancelBtn);
+  }
+}
+
+function openChainManager(chain: Chain) {
+  logger.info(`[overlay.ts] Opening chain manager for chain: ${chain.name}`);
+  // TODO: Implement IPC call to open chain manager with specific chain
+  api.send('open-chain-manager', { chainId: chain.id });
+  api.hideOverlay?.();
+}
+
+function copyChainReference(chain: Chain) {
+  logger.info(`[overlay.ts] Copying chain reference for: ${chain.name}`);
+  const reference = `[Chain:${chain.name}]`;
+  api.insertSnippet(reference);
+  showFlash();
+}
+
+function duplicateChain(chain: Chain) {
+  logger.info(`[overlay.ts] Duplicating chain: ${chain.name}`);
+  // TODO: Implement chain duplication
+  showFlash();
+}
+
+function toggleStarterStatus(chain: Chain) {
+  logger.info(`[overlay.ts] Toggling starter status for chain: ${chain.name}`);
+  // TODO: Implement starter status toggle
+  showFlash();
+}
+
+async function saveQuickEditChanges(
+  chain: Chain, 
+  nameInput: HTMLInputElement, 
+  descInput: HTMLTextAreaElement, 
+  optionsContainer: HTMLDivElement
+) {
+  logger.info(`[overlay.ts] Saving quick edit changes for chain: ${chain.name}`);
+  
+  try {
+    // Collect updated data
+    const updatedName = nameInput.value.trim();
+    const updatedDescription = descInput.value.trim();
+    
+    // Collect updated options
+    const optionDivs = optionsContainer.querySelectorAll('div[style*="border: 1px solid"]');
+    const updatedOptions: any[] = [];
+    
+    optionDivs.forEach((optionDiv, index) => {
+      const titleInput = optionDiv.querySelector('input') as HTMLInputElement;
+      const bodyTextarea = optionDiv.querySelector('textarea') as HTMLTextAreaElement;
+      
+      if (titleInput && bodyTextarea) {
+        const originalOption = chain.options[index];
+        updatedOptions.push({
+          id: originalOption?.id || `new-${Date.now()}-${index}`,
+          title: titleInput.value.trim() || `Option ${index + 1}`,
+          body: bodyTextarea.value.trim()
+        });
+      }
+    });
+    
+    // Validate required fields
+    if (!updatedName) {
+      showErrorMessage('Chain name is required');
+      return;
+    }
+    
+    if (updatedOptions.length === 0) {
+      showErrorMessage('At least one option is required');
+      return;
+    }
+    
+    // Show confirmation dialog
+    const confirmed = await showConfirmDialog(
+      `Save changes to "${updatedName}"?`,
+      'This will permanently update the chain in the database.'
+    );
+    
+    if (!confirmed) {
+      logger.info('[overlay.ts] Quick edit save cancelled by user');
+      return;
+    }
+    
+    // Prepare update data
+    const updateData = {
+      name: updatedName,
+      description: updatedDescription,
+      options: updatedOptions
+    };
+    
+    logger.info(`[overlay.ts] Updating chain ${chain.id} with data:`, updateData);
+    
+    // Call API to update chain
+    const result = await api.invoke('update-chain', chain.id, updateData);
+    
+    if (result.success) {
+      logger.info(`[overlay.ts] Chain ${chain.id} updated successfully`);
+      showSuccessMessage('Chain saved successfully!');
+      
+      // Refresh data and return to starters view
+      await loadData();
+      showStarterChainsView();
+    } else {
+      logger.error(`[overlay.ts] Failed to update chain ${chain.id}:`, result.error);
+      showErrorMessage(`Failed to save: ${result.error}`);
+    }
+    
+  } catch (error) {
+    logger.error('[overlay.ts] Error saving quick edit changes:', error);
+    showErrorMessage('An error occurred while saving');
+  }
+}
+
+function showConfirmDialog(title: string, message: string): Promise<boolean> {
+  return new Promise(resolve => {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2147483647;
+    `;
+    
+    // Create dialog
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      background: var(--bg);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    `;
+    
+    // Title
+    const titleEl = document.createElement('h3');
+    titleEl.textContent = title;
+    titleEl.style.cssText = 'margin: 0 0 12px 0; color: var(--accent); font-size: 16px;';
+    
+    // Message
+    const messageEl = document.createElement('p');
+    messageEl.textContent = message;
+    messageEl.style.cssText = 'margin: 0 0 20px 0; color: var(--text); font-size: 14px; line-height: 1.4;';
+    
+    // Buttons container
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.style.cssText = 'display: flex; gap: 12px; justify-content: flex-end;';
+    
+    // Cancel button
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = 'background: var(--hover); color: var(--text); border: 1px solid var(--accent); padding: 8px 16px; border-radius: 6px; cursor: pointer;';
+    cancelBtn.addEventListener('click', () => {
+      modal.remove();
+      resolve(false);
+    });
+    
+    // Confirm button
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Save';
+    confirmBtn.style.cssText = 'background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;';
+    confirmBtn.addEventListener('click', () => {
+      modal.remove();
+      resolve(true);
+    });
+    
+    buttonsDiv.appendChild(cancelBtn);
+    buttonsDiv.appendChild(confirmBtn);
+    
+    dialog.appendChild(titleEl);
+    dialog.appendChild(messageEl);
+    dialog.appendChild(buttonsDiv);
+    modal.appendChild(dialog);
+    
+    document.body.appendChild(modal);
+    
+    // Auto-focus confirm button
+    setTimeout(() => confirmBtn.focus(), 50);
+  });
+}
+
+function showSuccessMessage(message: string) {
+  flash.textContent = message;
+  flash.style.background = '#27ae60';
+  showFlash();
+  setTimeout(() => {
+    flash.textContent = 'Pasted!';
+    flash.style.background = 'var(--accent)';
+  }, 2000);
+}
+
+function showErrorMessage(message: string) {
+  flash.textContent = message;
+  flash.style.background = '#e74c3c';
+  showFlash();
+  setTimeout(() => {
+    flash.textContent = 'Pasted!';
+    flash.style.background = 'var(--accent)';
+  }, 3000);
+}
+
+async function showChainSelector(textarea: HTMLTextAreaElement) {
+  logger.info('[overlay.ts] Opening chain selector');
+  
+  try {
+    // Get all available chains
+    const allChains = await api.listChains();
+    
+    if (!allChains || allChains.length === 0) {
+      showErrorMessage('No chains available to link');
+      return;
+    }
+    
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2147483648; display: flex; align-items: center; justify-content: center;';
+    
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = 'background: var(--bg); border: 2px solid var(--accent); border-radius: 8px; padding: 20px; max-width: 400px; max-height: 500px; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);';
+    
+    // Modal header
+    const header = document.createElement('h3');
+    header.textContent = 'Select Chain to Link';
+    header.style.cssText = 'margin: 0 0 15px 0; color: var(--accent); font-size: 16px;';
+    modalContent.appendChild(header);
+    
+    // Search input
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Search chains...';
+    searchInput.style.cssText = 'width: 100%; padding: 8px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); margin-bottom: 15px; font-size: 12px;';
+    modalContent.appendChild(searchInput);
+    
+    // Chains list container
+    const chainsList = document.createElement('div');
+    chainsList.style.cssText = 'max-height: 300px; overflow-y: auto; margin-bottom: 15px;';
+    modalContent.appendChild(chainsList);
+    
+    // Function to render chains
+    const renderChains = (filter = '') => {
+      chainsList.innerHTML = '';
+      const filteredChains = allChains.filter(chain => 
+        chain.name.toLowerCase().includes(filter.toLowerCase()) ||
+        (chain.description && chain.description.toLowerCase().includes(filter.toLowerCase()))
+      );
+      
+      if (filteredChains.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.textContent = 'No chains found';
+        noResults.style.cssText = 'color: var(--text); font-style: italic; text-align: center; padding: 20px;';
+        chainsList.appendChild(noResults);
+        return;
+      }
+      
+      filteredChains.forEach(chain => {
+        const chainItem = document.createElement('div');
+        chainItem.style.cssText = 'border: 1px solid var(--hover); border-radius: 4px; padding: 10px; margin-bottom: 8px; cursor: pointer; background: rgba(255,255,255,0.05); transition: background 0.2s;';
+        
+        const chainName = document.createElement('div');
+        chainName.textContent = chain.name;
+        chainName.style.cssText = 'font-weight: bold; color: var(--text); margin-bottom: 4px;';
+        
+        const chainDesc = document.createElement('div');
+        chainDesc.textContent = chain.description || 'No description';
+        chainDesc.style.cssText = 'font-size: 11px; color: var(--text); opacity: 0.7;';
+        
+        const chainOptions = document.createElement('div');
+        chainOptions.textContent = `${chain.options?.length || 0} option${(chain.options?.length || 0) !== 1 ? 's' : ''}`;
+        chainOptions.style.cssText = 'font-size: 10px; color: var(--accent); margin-top: 4px;';
+        
+        chainItem.appendChild(chainName);
+        chainItem.appendChild(chainDesc);
+        chainItem.appendChild(chainOptions);
+        
+        // Hover effect
+        chainItem.addEventListener('mouseenter', () => {
+          chainItem.style.background = 'rgba(255,255,255,0.1)';
+        });
+        chainItem.addEventListener('mouseleave', () => {
+          chainItem.style.background = 'rgba(255,255,255,0.05)';
+        });
+        
+        // Click to select
+        chainItem.addEventListener('click', () => {
+          insertChainReference(textarea, chain.name);
+          document.body.removeChild(modal);
+        });
+        
+        chainsList.appendChild(chainItem);
+      });
+    };
+    
+    // Search functionality
+    searchInput.addEventListener('input', (e) => {
+      const target = e.target as HTMLInputElement;
+      renderChains(target.value);
+    });
+    
+    // Initial render
+    renderChains();
+    
+    // Cancel button
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = 'background: var(--hover); color: var(--text); border: 1px solid var(--accent); padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;';
+    cancelBtn.addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+    modalContent.appendChild(cancelBtn);
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Focus search input
+    searchInput.focus();
+    
+    // Close on escape
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        document.body.removeChild(modal);
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    
+  } catch (error) {
+    logger.error('[overlay.ts] Error showing chain selector:', error);
+    showErrorMessage('Error loading chains');
+  }
+}
+
+function insertChainReference(textarea: HTMLTextAreaElement, chainName: string) {
+  logger.info(`[overlay.ts] Inserting chain reference: ${chainName}`);
+  
+  const cursorPos = textarea.selectionStart;
+  const textBefore = textarea.value.substring(0, cursorPos);
+  const textAfter = textarea.value.substring(textarea.selectionEnd);
+  const chainReference = `[Chain:${chainName}]`;
+  
+  textarea.value = textBefore + chainReference + textAfter;
+  
+  // Set cursor position after the inserted reference
+  const newCursorPos = cursorPos + chainReference.length;
+  textarea.setSelectionRange(newCursorPos, newCursorPos);
+  textarea.focus();
+  
+  // Trigger change event to update any listeners
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  
+  showSuccessMessage(`Linked to chain: ${chainName}`);
+}
+
+function createOptionEditor(container: HTMLDivElement, option: any, index: number) {
+  const optionDiv = document.createElement('div');
+  optionDiv.style.cssText = 'border: 1px solid var(--hover); border-radius: 4px; padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.05); position: relative;';
+  
+  // Remove button
+  const removeBtn = document.createElement('button');
+  removeBtn.textContent = '×';
+  removeBtn.style.cssText = 'position: absolute; top: 5px; right: 5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; line-height: 1;';
+  removeBtn.addEventListener('click', () => {
+    optionDiv.remove();
+  });
+  
+  // Option title input
+  const optionTitle = document.createElement('input');
+  optionTitle.type = 'text';
+  optionTitle.value = option.title;
+  optionTitle.placeholder = 'Option title...';
+  optionTitle.style.cssText = 'width: calc(100% - 30px); padding: 6px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); margin-bottom: 8px; font-size: 12px;';
+  
+  // Option body textarea
+  const optionBody = document.createElement('textarea');
+  optionBody.value = option.body || '';
+  optionBody.placeholder = 'Option content...';
+  optionBody.style.cssText = 'width: calc(100% - 80px); padding: 6px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); min-height: 40px; resize: vertical; font-size: 12px; margin-bottom: 8px;';
+  
+  // Chain link button
+  const chainLinkBtn = document.createElement('button');
+  chainLinkBtn.textContent = '🔗 Link Chain';
+  chainLinkBtn.style.cssText = 'width: 75px; height: 40px; background: var(--hover); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; cursor: pointer; font-size: 10px; margin-left: 5px; vertical-align: top;';
+  chainLinkBtn.addEventListener('click', () => {
+    showChainSelector(optionBody);
+  });
+  
+  // Container for textarea and button
+  const bodyContainer = document.createElement('div');
+  bodyContainer.style.cssText = 'display: flex; align-items: flex-start; gap: 5px;';
+  bodyContainer.appendChild(optionBody);
+  bodyContainer.appendChild(chainLinkBtn);
+  
+  // Chain link indicator (show if option contains chain references)
+  const chainIndicator = document.createElement('div');
+  const chainCount = (option.body || '').match(/\[Chain:[^\]]+\]/g)?.length || 0;
+  if (chainCount > 0) {
+    chainIndicator.textContent = `🔗 ${chainCount} chain link${chainCount > 1 ? 's' : ''}`;
+    chainIndicator.style.cssText = 'font-size: 10px; color: var(--accent); margin-bottom: 5px; font-style: italic;';
+  }
+  
+  optionDiv.appendChild(removeBtn);
+  optionDiv.appendChild(optionTitle);
+  if (chainCount > 0) {
+    optionDiv.appendChild(chainIndicator);
+  }
+  optionDiv.appendChild(bodyContainer);
+  
+  // Insert before the add button if it exists, otherwise append
+  const addButton = container.querySelector('button[style*="Add Option"]');
+  if (addButton) {
+    container.insertBefore(optionDiv, addButton);
+      } else {
+    container.appendChild(optionDiv);
+  }
+}
+
+async function handleChainOptionSelect(chain: Chain, option: any) {
+  logger.info(`[overlay.ts] Option selected: "${option.title}" from chain "${chain.name}"`);
+  
+  try {
+    let contentToProcess = option.body || option.title || 'No content';
+    
+    // Check for placeholders that need processing
+    if (contentToProcess.includes('[?:') || contentToProcess.includes('[Chain:')) {
+      logger.info(`[overlay.ts] Content contains placeholders, processing: "${contentToProcess.substring(0, 100)}..."`);
+      
+      // Process [?:FieldName] placeholders
+      contentToProcess = await processPlaceholders(contentToProcess);
+      
+      // TODO: Process [Chain:ChainName] references in future implementation
+    }
+    
+    logger.info(`[overlay.ts] Final content to copy: "${contentToProcess}"`);
+    
+    // Copy to clipboard
+    api.insertSnippet(contentToProcess);
+    
+    // Hide overlay after execution
+    api.hideOverlay?.();
+    
+  } catch (error) {
+    logger.error(`[overlay.ts] Error processing chain option:`, error);
+    flash.textContent = 'Error processing option!';
+    flash.style.background = '#e74c3c';
+    showFlash();
+    setTimeout(() => {
+      flash.textContent = 'Pasted!';
+      flash.style.background = 'var(--accent)';
+    }, 2000);
+  }
+}
+
+async function processPlaceholders(content: string): Promise<string> {
+  logger.info(`[overlay.ts] Processing placeholders in content: "${content.substring(0, 100)}..."`);
+  
+  let processedContent = content;
+  
+  // Process [Chain:ChainName] references first
+  const chainRegex = /\[Chain:([^\]]+)\]/g;
+  const chainMatches = [...content.matchAll(chainRegex)];
+  
+  for (const match of chainMatches) {
+    const fullMatch = match[0]; // e.g., "[Chain:Signature]"
+    const chainName = match[1] || 'UnknownChain'; // e.g., "Signature"
+    
+    logger.info(`[overlay.ts] Found chain reference: ${fullMatch} (chain: ${chainName})`);
+    
+    try {
+      // Get the referenced chain
+      const referencedChain = await api.getChainByName(chainName);
+      
+      if (referencedChain) {
+        logger.info(`[overlay.ts] Found referenced chain: ${referencedChain.name}`);
+        
+        // Process the referenced chain
+        let chainContent: string = chainName; // Default fallback
+        
+        if (referencedChain.options && referencedChain.options.length > 0) {
+          if (referencedChain.options.length === 1) {
+            // Single option - use directly
+            const option = referencedChain.options[0];
+            if (option) {
+              chainContent = option.body || option.title || chainName;
+              logger.info(`[overlay.ts] Using single option from chain "${chainName}"`);
+            } else {
+              chainContent = chainName;
+            }
+          } else {
+            // Multiple options - show choice overlay
+            logger.info(`[overlay.ts] Chain "${chainName}" has multiple options, showing choice overlay`);
+            const choices = referencedChain.options.map(opt => ({
+              label: opt.title,
+              text: opt.body || opt.title
+            }));
+            
+            chainContent = await presentChoice(
+              `Select option from "${chainName}":`,
+              choices
+            );
+            logger.info(`[overlay.ts] User selected option from chain "${chainName}"`);
+          }
+        } else {
+          logger.warn(`[overlay.ts] Chain "${chainName}" has no options, using chain name`);
+        }
+        
+        // Recursively process the chain content for nested placeholders
+        if (chainContent.trim() !== '') {
+          chainContent = await processPlaceholders(chainContent);
+        }
+        
+        // Replace the chain reference with the processed content
+        processedContent = processedContent.replace(fullMatch, chainContent);
+        logger.info(`[overlay.ts] Replaced ${fullMatch} with processed chain content`);
+        
+      } else {
+        logger.warn(`[overlay.ts] Chain "${chainName}" not found, leaving reference as-is`);
+      }
+    } catch (error) {
+      logger.error(`[overlay.ts] Error processing chain reference ${fullMatch}:`, error);
+    }
+  }
+  
+  // Process [?:FieldName] placeholders after chain references
+  const placeholderRegex = /\[?\?:([^\]]+)\]/g;
+  const matches = [...processedContent.matchAll(placeholderRegex)];
+  
+  for (const match of matches) {
+    const fullMatch = match[0]; // e.g., "[?:Customer]"
+    const fieldName = match[1]; // e.g., "Customer"
+    
+    logger.info(`[overlay.ts] Found placeholder: ${fullMatch} (field: ${fieldName})`);
+    
+    // Prompt user for input
+    const userInput = await presentInput(`Enter ${fieldName}:`);
+    
+    if (userInput) {
+      processedContent = processedContent.replace(fullMatch, userInput);
+      logger.info(`[overlay.ts] Replaced ${fullMatch} with "${userInput}"`);
+    } else {
+      logger.warn(`[overlay.ts] No input provided for ${fullMatch}, leaving as-is`);
+    }
+  }
+  
+  return processedContent;
 }
 
 function handleClipSelect(text: string) {
@@ -363,7 +1343,20 @@ function handleClipSelect(text: string) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    api.hideOverlay?.();
+    // If input is pending, clear it and go back to starters
+    if (isInputPending) {
+      logger.info('[overlay.ts] Escape pressed during input - clearing input protection');
+      isInputPending = false;
+      (window as any).isInputPending = false;
+      showStarterChainsView();
+    }
+    // If we're in chain options view, go back to starters
+    else if (currentChain && chainRunner && chainRunner.style.display !== 'none') {
+      showStarterChainsView();
+    } else {
+      // Otherwise hide the overlay
+      api.hideOverlay?.();
+    }
   }
 });
 
@@ -374,85 +1367,44 @@ function showFloatingGrids(position: string) {
     return;
   }
 
-  // --- Debug Simplification START ---
+  // Set up container styling
   container.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out';
   container.style.position = 'fixed';
-  container.style.width = '400px'; // Fixed width for now
-  container.style.height = '500px'; // Fixed height for now
-  container.style.left = '50%';
-  container.style.top = '50%';
-  container.style.transform = 'translate(-50%, -50%)';
-  container.style.backgroundColor = 'rgba(50, 50, 70, 0.95)'; // Dark, semi-transparent
-  container.style.border = '2px solid cyan';
-  container.style.padding = '10px';
-  container.style.borderRadius = '8px';
-  container.style.display = 'flex'; // Use flex to manage inner grids
-  container.style.flexDirection = 'column';
-  container.style.zIndex = '2147483647'; // Max z-index
+  container.style.width = '400px';
+  container.style.height = 'auto';
+  container.style.maxHeight = '80vh';
+  container.style.backgroundColor = 'rgba(20, 20, 20, 0.95)';
+  container.style.border = '1px solid rgba(255,255,255,0.1)';
+  container.style.padding = '15px';
+  container.style.borderRadius = '12px';
+  container.style.boxShadow = '0 8px 32px rgba(0,0,0,0.4)';
+  container.style.backdropFilter = 'blur(12px)';
+  container.style.display = 'block';
+  container.style.zIndex = '2147483647';
   container.style.opacity = '1';
-  // --- Debug Simplification END ---
+  container.style.overflowY = 'auto';
+  container.style.overflowX = 'hidden';
 
-  // Hide all grids initially, then show the primary one (pinnedGrid)
-  const allGrids = [pinnedGrid, snippetsGrid, chainsGrid, historyGrid, chainRunner];
+  // Position based on edge trigger (positioning is handled by main process, but we can adjust if needed)
+  // The main process already positions the window, so we just need to show content
+  
+  // Show starter chains by default, hide other grids
+  const allGrids = [snippetsGrid, chainsGrid, historyGrid];
   allGrids.forEach(grid => {
     if (grid) grid.style.display = 'none';
   });
-
-  if (pinnedGrid) {
-    logger.info('[overlay.ts] Making pinnedGrid visible.');
-    pinnedGrid.style.display = 'grid'; // Or 'block' if more appropriate for its content flow
-    pinnedGrid.style.flex = '1'; // Allow it to take available space if container is flex
-  } else {
-    logger.warn('[overlay.ts] pinnedGrid element not found.');
-  }
   
-  // Original logic for positioning and showing specific grids can be restored later
-  /*
-  const display = window.screen; // This might not be available or correct, Electron screen API is via main
-  const workArea = { x:0, y:0, width: window.innerWidth, height: window.innerHeight }; // Placeholder
-
-  const overlayWidth = container.offsetWidth || 400;
-  const overlayHeight = container.offsetHeight || 500;
-  let x = 0;
-  let y = workArea.y + workArea.height * 0.1; // Default to 10% from top
-
-  // Determine position based on edge argument
-  switch (position) {
-    case 'left-center':
-      x = workArea.x;
-      break;
-    case 'right-center':
-      x = workArea.x + workArea.width - overlayWidth;
-      break;
-    case 'top-left': x = workArea.x; y = workArea.y; break;
-    case 'top-right': x = workArea.x + workArea.width - overlayWidth; y = workArea.y; break;
-    case 'bottom-left': x = workArea.x; y = workArea.y + workArea.height - overlayHeight; break;
-    case 'bottom-right': x = workArea.x + workArea.width - overlayWidth; y = workArea.y + workArea.height - overlayHeight; break;
-    default:
-      x = workArea.x + workArea.width - overlayWidth; // Default to right
-      break;
+  // Hide chain runner initially (will be shown when needed for options)
+  if (chainRunner) chainRunner.style.display = 'none';
+  
+  if (starterGrid) {
+    logger.info('[overlay.ts] Making starterGrid visible.');
+    starterGrid.style.display = 'grid';
+    } else {
+    logger.warn('[overlay.ts] starterGrid element not found.');
   }
 
-  // Clamp to screen
-  x = Math.max(workArea.x, Math.min(x, workArea.x + workArea.width - overlayWidth));
-  y = Math.max(workArea.y, Math.min(y, workArea.y + workArea.height - overlayHeight));
-
-  container.style.left = `${x}px`;
-  container.style.top = `${y}px`;
-  container.style.opacity = '1';
-  container.style.transform = 'translateY(0)';
-  container.style.display = 'block';
-
-  // For now, only show pinned items grid when overlay appears
-  if (pinnedGrid) pinnedGrid.style.display = 'grid';
-  if (snippetsGrid) snippetsGrid.style.display = 'none';
-  if (chainsGrid) chainsGrid.style.display = 'none';
-  if (historyGrid) historyGrid.style.display = 'none';
-  if (chainRunner) chainRunner.style.display = 'none';
-  */
-
-  logger.info('[overlay.ts] Overlay should now be visible and styled for debug.');
-  // window.electronAPI?.send('overlay:shown'); // Removed: Use contextBridge API if needed
+  logger.info('[overlay.ts] Overlay showing ONLY starter chains (no other content).');
 }
 
 function hideFloatingGrids() {
@@ -523,6 +1475,30 @@ if (api && typeof api.on === 'function' && typeof api.send === 'function') {
             }
             currentTheme = newSettings.theme;
             logger.info(`[overlay.ts] Theme changed to: ${currentTheme}`);
+        }
+    });
+
+    // Listener for chain updates (real-time refresh)
+    api.on('chains:updated', () => {
+        logger.info('[overlay.ts] Received chains:updated from main. Refreshing data...');
+        loadData(); // Refresh all data including starter chains
+    });
+
+    // Listener for snippet insertion feedback
+    api.on('snippet-inserted', (result: { success: boolean; error?: string }) => {
+        logger.info('[overlay.ts] Received snippet-inserted feedback:', result);
+        if (result.success) {
+            logger.info('[overlay.ts] ✅ Snippet successfully copied to clipboard!');
+            showFlash(); // Show success flash
+        } else {
+            logger.error('[overlay.ts] ❌ Snippet insertion failed:', result.error);
+            flash.textContent = 'Copy failed!';
+            flash.style.background = '#e74c3c';
+            showFlash();
+            setTimeout(() => {
+                flash.textContent = 'Pasted!';
+                flash.style.background = 'var(--accent)';
+            }, 2000);
         }
     });
 

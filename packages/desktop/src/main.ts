@@ -8,6 +8,7 @@ import {
   Menu,
   IpcMainEvent,
   Tray,
+  nativeImage,
 } from 'electron';
 import path from 'path';
 import {
@@ -28,11 +29,15 @@ import {
   createSnippet as dbCreateSnippet,
   updateSnippet as dbUpdateSnippet,
   deleteSnippet as dbDeleteSnippet,
+  getSnippetById as dbGetSnippetById,
+  getPinnedItems as dbGetPinnedItems,
+  getStarterChains as dbGetStarterChains,
 } from './db';
 import { logger } from './logger';
 import { processTextWithChain } from './services/chainService';
 import { exportDiagnostics } from './diagnostics';
-import { 
+import { setupTestStarterChains } from './test-data-setup';
+import {
   type Settings, 
   type OverlaySettings, 
   type ChoiceProvider as MainChoiceProvider,
@@ -51,13 +56,24 @@ let mouseMoveInterval: NodeJS.Timeout | null = null;
 let hoverTimeout: NodeJS.Timeout | null = null;
 let isHovering = false;
 let chainManagerWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 
 const EDGE_HOVER_POLL_INTERVAL = 50; // ms
 const DEFAULT_EDGE_HOVER_ACTIVATION_DELAY = 200; // Default if not in settings
-const EDGE_HOVER_HIDE_DELAY = 300; // ms for hide initiation
+const EDGE_HOVER_HIDE_DELAY = 800; // ms for hide initiation - increased for better UX
 const OVERLAY_CONFIRM_HIDE_TIMEOUT = 750; // ms for failsafe hide
 
 let lastUsedEdgeHoverPosition: string | null = null;
+
+// Store the previously focused window for cursor position restoration
+let previouslyFocusedWindow: BrowserWindow | null = null;
+
+// Track if we've already scheduled a hide attempt to prevent spam
+let hideAttemptScheduled: boolean = false;
+
+// Track last input pending check to avoid excessive JavaScript execution
+let lastInputPendingCheck: number = 0;
+const INPUT_PENDING_CHECK_THROTTLE = 100; // ms
 
 // Consolidated helper: Checks if cursor is within a specific trigger zone
 function isCursorInTriggerZone(cursorPos: Electron.Point, position: string, triggerSize: number, workArea: Electron.Rectangle): boolean {
@@ -119,19 +135,26 @@ function startMouseTracking(currentSettings: Settings) {
     const overlayBounds = overlayIsVisible ? overlayWindow.getBounds() : null;
     const mouseOverOverlay = isMouseOverOverlayWindow(cursorPos, overlayBounds);
     const isInCurrentActivationZone = isCursorInTriggerZone(cursorPos, position, triggerSize, workArea);
+    
+    // Reset hide attempt flag if mouse returns to overlay or trigger zone
+    if ((mouseOverOverlay || isInCurrentActivationZone) && hideAttemptScheduled) {
+      hideAttemptScheduled = false;
+      logger.info('[main.ts] Mouse returned to overlay/trigger zone - resetting hide attempt flag');
+    }
 
-    // SHOW LOGIC
+        // SHOW LOGIC
     if (isInCurrentActivationZone && !isHovering && !mouseOverOverlay) {
       if (overlayState === 'hidden' || overlayState === 'hiding') { 
         logger.info('[main.ts] startMouseTracking: Initiating show sequence. Setting overlayState to showing.');
         overlayState = 'showing';
+        hideAttemptScheduled = false; // Reset flag when showing
         
-        isHovering = true; 
+      isHovering = true;
         lastUsedEdgeHoverPosition = position; 
         logger.info(`[main.ts] Mouse entered ${position} zone. Setting hoverTimeout for ${activationDelay}ms. state: ${overlayState}`);
         if (hoverTimeout) clearTimeout(hoverTimeout);
         
-        hoverTimeout = setTimeout(() => {
+      hoverTimeout = setTimeout(() => {
           const latestCursorPos = screen.getCursorScreenPoint();
           const stillInZone = isCursorInTriggerZone(latestCursorPos, position, triggerSize, workArea);
           const latestOverlayBounds = overlayWindow && overlayWindow.getBounds();
@@ -139,6 +162,13 @@ function startMouseTracking(currentSettings: Settings) {
 
           if (isHovering && overlayWindow && stillInZone && stillNotOverOverlay && overlayState === 'showing') {
             logger.info('[main.ts] hoverTimeout: Conditions met. Positioning and showing overlay.');
+            
+            // Store the currently focused window before showing overlay
+            previouslyFocusedWindow = BrowserWindow.getFocusedWindow();
+            if (previouslyFocusedWindow && previouslyFocusedWindow !== overlayWindow) {
+              logger.info('[main.ts] Stored previously focused window for cursor restoration');
+            }
+            
             if (lastUsedEdgeHoverPosition) { 
                positionOverlayAtPosition(lastUsedEdgeHoverPosition); 
             }
@@ -182,7 +212,11 @@ function startMouseTracking(currentSettings: Settings) {
       if (overlayIsVisible && !mouseOverOverlay ) {
         const relevantZoneToCheck = lastUsedEdgeHoverPosition || position;
         if (!isCursorInTriggerZone(cursorPos, relevantZoneToCheck, triggerSize, workArea)) {
+          // Only proceed if no hide attempt is already scheduled (prevents all spam)
+          if (!hideAttemptScheduled) {
+            hideAttemptScheduled = true;
             logger.info(`[main.ts] Conditions met to initiate overlay hide (mouse left ${relevantZoneToCheck}). Scheduling hide with delay.`);
+            
         setTimeout(() => {
               const latestCursorPosAfterHideDelay = screen.getCursorScreenPoint();
               const workAreaAfterHideDelay = screen.getPrimaryDisplay().workArea;
@@ -191,13 +225,40 @@ function startMouseTracking(currentSettings: Settings) {
               const latestOverlayBoundsAfterDelay = latestOverlayIsVisibleAfterDelay ? overlayWindow && overlayWindow.getBounds() : null;
               const stillNotOverOverlayAfterHideDelay = !isMouseOverOverlayWindow(latestCursorPosAfterHideDelay, latestOverlayBoundsAfterDelay);
 
+              // Reset the flag since this timeout has executed
+              hideAttemptScheduled = false;
+
               if (overlayWindow && latestOverlayIsVisibleAfterDelay && stillNotOverOverlayAfterHideDelay && stillNotInRelevantZone) {
-                logger.info('[main.ts] Mouse confirmed away after hide-delay. Calling hideOverlay("mouse_leave").');
-                hideOverlay("mouse_leave");
+                // Throttle input pending checks to avoid excessive JavaScript execution
+                const now = Date.now();
+                if (now - lastInputPendingCheck > INPUT_PENDING_CHECK_THROTTLE) {
+                  lastInputPendingCheck = now;
+                  
+                  // Check if input is pending or user is in interactive mode before hiding
+                  overlayWindow.webContents.executeJavaScript('window.isInputPending || window.isInQuickEdit || window.isInContextMenu || false')
+                    .then((isInteractive: boolean) => {
+                      if (isInteractive) {
+                        logger.info('[main.ts] Mouse leave: Interactive mode active (input/quick edit/context menu), keeping overlay open');
+                        // Don't schedule another hide attempt immediately - let the next mouse poll cycle handle it
+                      } else {
+                        logger.info('[main.ts] Mouse confirmed away after hide-delay. Calling hideOverlay("mouse_leave").');
+                        hideOverlay("mouse_leave");
+                      }
+                    })
+                    .catch(() => {
+                      // Fallback: if we can't check input state, hide overlay as before
+                      logger.info('[main.ts] Mouse leave: Could not check input state, hiding overlay.');
+                      hideOverlay("mouse_leave");
+                    });
+                } else {
+                  logger.info('[main.ts] Mouse leave: Input pending check throttled, skipping');
+                }
               } else {
                 logger.info('[main.ts] Hide conditions no longer met after mouse-leave delay. Aborting hide request.');
               }
             }, EDGE_HOVER_HIDE_DELAY);
+          }
+          // If hideAttemptScheduled is true, we silently skip ALL processing to avoid spam
         }
       }
     }
@@ -261,32 +322,284 @@ function createWindow() {
 
 function createOverlayWindow() {
   const workArea = screen.getPrimaryDisplay().workArea;
-  overlayWindow = new BrowserWindow({
+  
+  // Create base options
+  const baseOptions = {
     width: 400, height: 500, 
     x: workArea.x + workArea.width, y: workArea.y + 100, // Off-screen initially
-    frame: false, transparent: true, resizable: false, alwaysOnTop: true,
-    skipTaskbar: true, focusable: true, show: false, // Initially hidden
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true },
-  });
+    frame: false,
+    transparent: true,
+    resizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    focusable: true,
+    show: false, // Initially hidden
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'), 
+      nodeIntegration: false, 
+      contextIsolation: true 
+    },
+  };
+  
+  // Add macOS-specific options if on macOS
+  const overlayOptions = process.platform === 'darwin' 
+    ? { ...baseOptions, type: 'panel' as const }
+    : baseOptions;
+  
+  overlayWindow = new BrowserWindow(overlayOptions);
+  
   overlayWindow.loadFile(path.join(__dirname, 'overlay.html'));
+  
+  // Enhanced z-index management for input dialogs
+  overlayWindow.on('show', () => {
+    // Ensure overlay stays on top when shown
+    overlayWindow?.setAlwaysOnTop(true, 'screen-saver');
+    if (process.platform === 'win32') {
+      // On Windows, use additional methods to ensure top-most behavior
+      overlayWindow?.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    }
+  });
+  
+  // Handle focus events to maintain z-index during input
+  overlayWindow.on('focus', () => {
+    // When overlay gains focus (like during input), ensure it stays on top
+    overlayWindow?.setAlwaysOnTop(true, 'screen-saver');
+  });
+  
+  // Monitor for input pending state and adjust z-index accordingly
+  const checkInputState = () => {
+    if (overlayWindow && !overlayWindow.isDestroyed() && overlayWindow.isVisible()) {
+      overlayWindow.webContents.executeJavaScript('window.isInputPending || window.isInQuickEdit || window.isInContextMenu || false')
+        .then((isInteractive: boolean) => {
+          if (isInteractive) {
+            // During interactive mode, use highest z-index level
+            overlayWindow?.setAlwaysOnTop(true, 'screen-saver');
+            if (process.platform === 'win32') {
+              overlayWindow?.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+            }
+          }
+        })
+        .catch(() => {
+          // Ignore errors during state checking
+        });
+    }
+  };
+  
+  // Check input state periodically when overlay is visible
+  setInterval(checkInputState, 1000);
+  
   if (overlayWindow) overlayWindow.webContents.openDevTools({ mode: 'detach' });
   overlayWindow.on('blur', () => {
     logger.info(`[main.ts] Overlay window blurred. Current state: ${overlayState}`);
-    if (overlayState === 'visible') {
-      logger.info('[main.ts] Blur event: Overlay was visible, calling hideOverlay("blur_event").');
-      hideOverlay("blur_event");
-    } else {
-      logger.info(`[main.ts] Blur event: Overlay not hiding via blur as state is ${overlayState}.`);
+    if (overlayState === 'visible' && overlayWindow && !overlayWindow.isDestroyed()) {
+      // Check if we're in interactive mode before hiding on blur
+      overlayWindow.webContents.executeJavaScript('window.isInputPending || window.isInQuickEdit || window.isInContextMenu || false')
+        .then((isInteractive: boolean) => {
+          if (!isInteractive) {
+            logger.info('[main.ts] Blur event: No interactive mode, calling hideOverlay("blur_event").');
+            hideOverlay("blur_event");
+          } else {
+            logger.info('[main.ts] Blur event: Interactive mode active, keeping overlay open');
+            // Ensure overlay stays on top even when blurred during interactive mode
+            overlayWindow?.setAlwaysOnTop(true, 'screen-saver');
+          }
+        })
+        .catch(() => {
+          // Fallback: hide on blur if we can't check state
+          logger.info('[main.ts] Blur event: Could not check interactive state, hiding overlay');
+          hideOverlay("blur_event");
+        });
     }
   });
-  overlayWindow.on('closed', () => {
-    logger.info('[main.ts] Overlay window closed.');
-    overlayWindow = null;
-    overlayState = 'hidden';
-    if (hoverTimeout) clearTimeout(hoverTimeout);
-    if (mouseMoveInterval) clearInterval(mouseMoveInterval);
+  
+  // Handle overlay acknowledgment for proper hide sequence
+  ipcMain.on('overlay:hidden-ack', () => {
+    logger.info(`[main.ts] ✅ RECEIVED overlay:hidden-ack. Current state: ${overlayState}`);
+    if (overlayState === 'hiding') {
+      logger.info('[main.ts] hidden-ack: Hiding overlay window.');
+      if (overlayWindow && !overlayWindow.isDestroyed() && overlayWindow.isVisible()) {
+  overlayWindow.hide();
+      }
+      logger.info('[main.ts] hidden-ack: Setting overlayState to hidden.');
+      overlayState = 'hidden';
+      isHovering = false;
+      lastUsedEdgeHoverPosition = null;
+    } else {
+      logger.warn(`[main.ts] hidden-ack: Received but state is not 'hiding'. Current state: ${overlayState}`);
+    }
   });
+  
   logger.info('[main.ts] Overlay window created.');
+}
+
+function createSystemTray() {
+  logger.info('[main.ts] Creating system tray');
+  
+  // Create tray icon
+  const iconPath = process.platform === 'win32' 
+    ? path.join(__dirname, '../assets/tray/iconWin.png')
+    : process.platform === 'darwin'
+    ? path.join(__dirname, '../assets/tray/iconTemplate.png')
+    : path.join(__dirname, '../assets/tray/icon.png');
+  
+  try {
+    const icon = nativeImage.createFromPath(iconPath);
+    tray = new Tray(icon);
+    tray.setToolTip('SnipFlow - Text Productivity Tool');
+    
+    // Create context menu
+    const createTrayMenu = () => {
+      const template = [
+        {
+          label: 'SnipFlow',
+          type: 'normal' as const,
+          enabled: false
+        },
+        { type: 'separator' as const },
+        {
+          label: 'Show Main Window',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.show();
+              mainWindow.focus();
+            }
+          }
+        },
+        {
+          label: overlayWindow?.isVisible() ? 'Hide Overlay' : 'Show Overlay',
+          click: () => {
+            if (overlayWindow?.isVisible()) {
+              hideOverlay('tray-toggle');
+            } else {
+              // Show overlay at default position
+              positionOverlayAtPosition('left-center');
+              if (overlayWindow) {
+                overlayWindow.show();
+                overlayWindow.webContents.send('overlay:show', { position: 'left-center' });
+                overlayState = 'visible';
+              }
+            }
+          }
+        },
+        { type: 'separator' as const },
+        {
+          label: 'Developer Tools',
+          submenu: [
+            {
+              label: 'Main Window DevTools',
+              click: () => {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                  if (mainWindow.webContents.isDevToolsOpened()) {
+                    mainWindow.webContents.closeDevTools();
+                  } else {
+                    mainWindow.webContents.openDevTools({ mode: 'detach' });
+                  }
+                }
+              }
+            },
+            {
+              label: 'Overlay DevTools',
+              click: () => {
+                if (overlayWindow && !overlayWindow.isDestroyed()) {
+                  if (overlayWindow.webContents.isDevToolsOpened()) {
+                    overlayWindow.webContents.closeDevTools();
+                  } else {
+                    overlayWindow.webContents.openDevTools({ mode: 'detach' });
+                  }
+                }
+              }
+            },
+            {
+              label: 'Chain Manager DevTools',
+              click: () => {
+                if (chainManagerWindow && !chainManagerWindow.isDestroyed()) {
+                  if (chainManagerWindow.webContents.isDevToolsOpened()) {
+                    chainManagerWindow.webContents.closeDevTools();
+                  } else {
+                    chainManagerWindow.webContents.openDevTools({ mode: 'detach' });
+                  }
+                } else {
+                  // Open chain manager first, then dev tools
+                  ipcMain.emit('open-chain-manager');
+                  setTimeout(() => {
+                    if (chainManagerWindow && !chainManagerWindow.isDestroyed()) {
+                      chainManagerWindow.webContents.openDevTools({ mode: 'detach' });
+                    }
+                  }, 1000);
+                }
+              }
+            }
+          ]
+        },
+        { type: 'separator' as const },
+        {
+          label: 'Settings',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.show();
+              mainWindow.focus();
+              // Send navigation event to main window
+              mainWindow.webContents.send('navigate-to-settings');
+            }
+          }
+        },
+        {
+          label: 'Export Diagnostics',
+          click: async () => {
+            try {
+              const diagnostics = await exportDiagnostics();
+              logger.info('[main.ts] Diagnostics exported via tray');
+            } catch (error) {
+              logger.error('[main.ts] Error exporting diagnostics via tray:', error);
+            }
+          }
+        },
+        { type: 'separator' as const },
+        {
+          label: 'Quit SnipFlow',
+          click: () => {
+            app.quit();
+          }
+        }
+      ];
+      
+      return Menu.buildFromTemplate(template);
+    };
+    
+    // Set up tray interactions
+    tray.on('click', () => {
+      // On Windows/Linux, single click toggles overlay
+      if (process.platform !== 'darwin') {
+        if (overlayWindow?.isVisible()) {
+          hideOverlay('tray-click');
+        } else {
+          positionOverlayAtPosition('left-center');
+          if (overlayWindow) {
+            overlayWindow.show();
+            overlayWindow.webContents.send('overlay:show', { position: 'left-center' });
+            overlayState = 'visible';
+          }
+        }
+      }
+    });
+    
+    tray.on('right-click', () => {
+      tray?.popUpContextMenu(createTrayMenu());
+    });
+    
+    // On macOS, always show menu on click
+    if (process.platform === 'darwin') {
+      tray.on('click', () => {
+        tray?.popUpContextMenu(createTrayMenu());
+      });
+    }
+    
+    logger.info('[main.ts] System tray created successfully');
+    
+  } catch (error) {
+    logger.error('[main.ts] Error creating system tray:', error);
+    logger.warn('[main.ts] Continuing without system tray');
+  }
 }
 
 function setupIpcHandlers() {
@@ -366,19 +679,42 @@ function setupIpcHandlers() {
     }
   });
 
-  ipcMain.handle('create-chain', async (_, name:string, opts:ChainOption[], desc?:string, tags?:string[], layout?:string, pinned?:boolean) => {
+  ipcMain.handle('create-chain', async (event, name: string, options: ChainOption[], description?: string | null, tags?: string[] | undefined, layoutData?: string | null, isPinned?: boolean) => {
+    logger.info(`[IPC] Received create-chain. Name: ${name}, Options Count: ${options?.length}`);
     try {
-      const newChain = dbCreateChain(name, opts, desc, tags, layout, pinned);
-      return newChain;
-    } catch (e: any) {
-      logger.error('IPC create-chain failed:', e);
-      return null;
+      const chainData: Partial<Chain> = {
+        name,
+        options,
+        isPinned: isPinned || false, // Ensure boolean
+      };
+      if (description !== undefined && description !== null) chainData.description = description;
+      if (tags !== undefined) chainData.tags = tags;
+      if (layoutData !== undefined && layoutData !== null) chainData.layoutData = layoutData;
+      
+      const newChain = dbCreateChain(chainData);
+      if (newChain) {
+        logger.info(`[IPC] Chain created successfully: ${newChain.id} - ${newChain.name}`);
+        return newChain;
+      } else {
+        logger.error('[main.ts] IPC: Error in create-chain: Chain not created');
+        throw new Error('Failed to create chain or receive new chain ID.');
+      }
+    } catch (error) {
+      logger.error('[main.ts] IPC: Error in create-chain:', error);
+      throw error; // Re-throw the error so React component can catch it
     }
   });
 
   ipcMain.handle('update-chain', async (_,id:number, data:Partial<Omit<Chain,'id'>>) => {
     try {
       dbUpdateChain(id, data);
+      
+      // Notify overlay of chain updates for real-time refresh
+      if (overlayWindow && !overlayWindow.isDestroyed()) {
+        overlayWindow.webContents.send('chains:updated');
+        logger.info(`[main.ts] Sent chains:updated to overlay after updating chain ${id}`);
+      }
+      
       return { success: true };
     } catch (e: any) {
       logger.error(`IPC update-chain failed for ID ${id}:`, e);
@@ -615,12 +951,79 @@ function setupIpcHandlers() {
     }
   });
   
-  ipcMain.handle('create-snippet', async (_, content: string) => dbCreateSnippet(content));
-  ipcMain.handle('update-snippet', async (_, id: number, content: string) => dbUpdateSnippet(id, content));
+  ipcMain.handle('create-snippet', async (_, content: string) => dbCreateSnippet({ content }));
+  ipcMain.handle('update-snippet', async (_, id: number, data: { content?: string, isPinned?: boolean }) => dbUpdateSnippet(id, data));
   ipcMain.handle('delete-snippet', async (_, id: number) => dbDeleteSnippet(id));
 
+  // IPC handlers for pinning snippets
+  ipcMain.handle('toggle-snippet-pin', async (event, id: number, isPinned: boolean) => {
+    logger.info(`[main.ts] IPC: toggle-snippet-pin received for ID: ${id}, Pinned: ${isPinned}`);
+    try {
+      // dbUpdateSnippet now accepts an object with isPinned
+      const success = await dbUpdateSnippet(id, { isPinned }); 
+      if (success) {
+        logger.info(`[main.ts] IPC: toggle-snippet-pin successful for ID: ${id}`);
+        if (mainWindow) mainWindow.webContents.send('snippets-updated');
+        if (overlayWindow) overlayWindow.webContents.send('pinned-items-updated');
+        return { success: true };
+      } else {
+        logger.warn(`[main.ts] IPC: toggle-snippet-pin failed for ID: ${id}. Update returned false.`);
+        return { success: false, error: 'Snippet update failed or snippet not found' };
+      }
+    } catch (error) {
+      logger.error(`[main.ts] IPC: Error in toggle-snippet-pin for ID ${id}:`, error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // IPC handlers for pinning chains
+  ipcMain.handle('toggle-chain-pin', async (event, id: number, isPinned: boolean) => {
+    logger.info(`[main.ts] IPC: toggle-chain-pin received for ID: ${id}, Pinned: ${isPinned}`);
+    try {
+      // Assuming dbUpdateChain is modified to accept isPinned in its data object
+      await dbUpdateChain(id, { isPinned }); 
+      logger.info(`[main.ts] IPC: toggle-chain-pin successful for ID: ${id}`);
+      if (mainWindow) mainWindow.webContents.send('chains-updated');
+      if (overlayWindow) overlayWindow.webContents.send('pinned-items-updated');
+      // Also notify React Chain Manager if it's open
+      if (chainManagerWindow && !chainManagerWindow.isDestroyed()) {
+        chainManagerWindow.webContents.send('chains-updated');
+      }
+      return { success: true };
+    } catch (error) {
+      logger.error(`[main.ts] IPC: Error in toggle-chain-pin for ID ${id}:`, error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // IPC handler to get all pinned items
+  ipcMain.handle('get-pinned-items', async () => {
+    logger.info('[main.ts] IPC: get-pinned-items received');
+    try {
+      const items = await dbGetPinnedItems();
+      logger.info(`[main.ts] IPC: get-pinned-items returning ${items.length} items.`);
+      return items;
+    } catch (error) {
+      logger.error('[main.ts] IPC: Error in get-pinned-items:', error);
+      return []; // Return empty array on error
+    }
+  });
+
+  // IPC handler to get starter chains
+  ipcMain.handle('get-starter-chains', async () => {
+    logger.info('[main.ts] IPC: get-starter-chains received');
+    try {
+      const chains = await dbGetStarterChains();
+      logger.info(`[main.ts] IPC: get-starter-chains returning ${chains.length} chains.`);
+      return chains;
+    } catch (error) {
+      logger.error('[main.ts] IPC: Error in get-starter-chains:', error);
+      return []; // Return empty array on error
+    }
+  });
+
   // IPC handler to open the Chain Manager window
-  ipcMain.on('open-chain-manager', () => {
+  ipcMain.handle('open-chain-manager', () => {
     if (chainManagerWindow) {
       chainManagerWindow.focus();
       return;
@@ -655,6 +1058,48 @@ function setupIpcHandlers() {
     });
   });
 
+  // Insert snippet handler - for overlay text insertion
+  ipcMain.on('insert-snippet', (event, content: string) => {
+    logger.info(`[main.ts] IPC: insert-snippet received with content length: ${content.length}`);
+    try {
+      // Copy to clipboard for immediate paste
+      clipboard.writeText(content);
+      logger.info('[main.ts] IPC: insert-snippet - Content copied to clipboard successfully');
+      
+      // Hide overlay first to return focus to original window
+      hideOverlay('insert-snippet-completion');
+      
+      // Brief delay to ensure overlay is hidden and focus returns to original window
+      setTimeout(() => {
+        logger.info('[main.ts] IPC: insert-snippet - Content ready for seamless pasting');
+        
+        // Restore focus to the previously focused window for cursor position preservation
+        if (previouslyFocusedWindow && !previouslyFocusedWindow.isDestroyed()) {
+          try {
+            previouslyFocusedWindow.focus();
+            logger.info('[main.ts] IPC: insert-snippet - Focus restored to original window');
+          } catch (error) {
+            logger.warn('[main.ts] IPC: insert-snippet - Could not restore focus:', error);
+          }
+        } else {
+          logger.info('[main.ts] IPC: insert-snippet - No previous window to restore focus to');
+        }
+        
+        // Send success notification back to overlay (if still exists)
+        if (overlayWindow && !overlayWindow.isDestroyed()) {
+          overlayWindow.webContents.send('snippet-inserted', { success: true });
+        }
+      }, 150);
+      
+    } catch (error) {
+      logger.error('[main.ts] IPC: Error in insert-snippet:', error);
+      // Send error notification back to overlay
+      if (overlayWindow && !overlayWindow.isDestroyed()) {
+        overlayWindow.webContents.send('snippet-inserted', { success: false, error: (error as Error).message });
+      }
+    }
+  });
+
   // Error Log handler
   ipcMain.handle('get-error-log', async () => {
     try {
@@ -674,13 +1119,356 @@ function setupIpcHandlers() {
       throw error;
     }
   });
+
+  // NEW: Export/Import handlers
+  ipcMain.handle('export-chain', async (event, chainId: number, options?: any) => {
+    logger.info(`[main.ts] IPC: export-chain received for ID: ${chainId}`);
+    try {
+      const chain = await dbGetChainById(chainId);
+      if (!chain) {
+        throw new Error(`Chain with ID ${chainId} not found`);
+      }
+
+      const exportData = {
+        version: '1.0.0',
+        exportDate: new Date().toISOString(),
+        chains: [{
+          name: chain.name,
+          description: chain.description,
+          options: chain.options,
+          tags: chain.tags,
+          isStarterChain: chain.isStarterChain,
+          metadata: {
+            originalId: chain.id,
+            createdAt: chain.createdAt,
+            updatedAt: chain.updatedAt,
+          }
+        }],
+        metadata: {
+          totalChains: 1,
+          categories: [],
+          tags: chain.tags || [],
+        }
+      };
+
+      // Show save dialog
+      const { dialog } = require('electron');
+      const result = await dialog.showSaveDialog(mainWindow || chainManagerWindow, {
+        title: 'Export Chain',
+        defaultPath: `${chain.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.snip`,
+        filters: [
+          { name: 'SnipFlow Chain Files', extensions: ['snip'] },
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+
+      if (!result.canceled && result.filePath) {
+        const fs = require('fs');
+        await fs.promises.writeFile(result.filePath, JSON.stringify(exportData, null, 2));
+        logger.info(`[main.ts] Chain exported successfully to: ${result.filePath}`);
+        return result.filePath;
+      }
+
+      return null;
+    } catch (error) {
+      logger.error(`[main.ts] IPC: Error in export-chain for ID ${chainId}:`, error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('export-chains', async (event, chainIds: number[], options?: any) => {
+    logger.info(`[main.ts] IPC: export-chains received for ${chainIds.length} chains`);
+    try {
+      const chains = [];
+      const allTags = new Set<string>();
+
+      for (const chainId of chainIds) {
+        const chain = await dbGetChainById(chainId);
+        if (chain) {
+          chains.push({
+            name: chain.name,
+            description: chain.description,
+            options: chain.options,
+            tags: chain.tags,
+            isStarterChain: chain.isStarterChain,
+            metadata: {
+              originalId: chain.id,
+              createdAt: chain.createdAt,
+              updatedAt: chain.updatedAt,
+            }
+          });
+          
+          if (chain.tags) {
+            chain.tags.forEach(tag => allTags.add(tag));
+          }
+        }
+      }
+
+      if (chains.length === 0) {
+        throw new Error('No valid chains found to export');
+      }
+
+      const exportData = {
+        version: '1.0.0',
+        exportDate: new Date().toISOString(),
+        chains,
+        metadata: {
+          totalChains: chains.length,
+          categories: [],
+          tags: Array.from(allTags),
+        }
+      };
+
+      // Show save dialog
+      const { dialog } = require('electron');
+      const defaultName = chains.length === 1 && chains[0]
+        ? `${chains[0].name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.snip`
+        : `snipflow_chains_${chains.length}_${new Date().toISOString().split('T')[0]}.snip`;
+
+      const result = await dialog.showSaveDialog(mainWindow || chainManagerWindow, {
+        title: `Export ${chains.length} Chain${chains.length > 1 ? 's' : ''}`,
+        defaultPath: defaultName,
+        filters: [
+          { name: 'SnipFlow Chain Files', extensions: ['snip'] },
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+
+      if (!result.canceled && result.filePath) {
+        const fs = require('fs');
+        await fs.promises.writeFile(result.filePath, JSON.stringify(exportData, null, 2));
+        logger.info(`[main.ts] ${chains.length} chains exported successfully to: ${result.filePath}`);
+        return result.filePath;
+      }
+
+      return null;
+    } catch (error) {
+      logger.error(`[main.ts] IPC: Error in export-chains:`, error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('import-chains-with-dialog', async (event) => {
+    logger.info(`[main.ts] IPC: import-chains-with-dialog received`);
+    try {
+      // Show open dialog
+      const { dialog } = require('electron');
+      const result = await dialog.showOpenDialog(mainWindow || chainManagerWindow, {
+        title: 'Import Chains from .snip file',
+        filters: [
+          { name: 'SnipFlow Chain Files', extensions: ['snip'] },
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true };
+      }
+
+      const filePath = result.filePaths[0];
+      
+      // Use the existing import logic
+      const fs = require('fs');
+      const fileContent = await fs.promises.readFile(filePath, 'utf8');
+      const importData = JSON.parse(fileContent);
+
+      if (!importData.chains || !Array.isArray(importData.chains)) {
+        throw new Error('Invalid .snip file format: missing chains array');
+      }
+
+      const imported = [];
+      const skipped = [];
+      const errors = [];
+
+      for (const chainData of importData.chains) {
+        try {
+          // Check if chain already exists
+          const existing = await dbGetChainByName(chainData.name);
+          
+          if (existing) {
+            // Simple rename strategy for now
+            let newName = chainData.name;
+            let counter = 1;
+            while (await dbGetChainByName(newName)) {
+              newName = `${chainData.name} (${counter})`;
+              counter++;
+            }
+            chainData.name = newName;
+          }
+
+          // Create the new chain
+          const newChain = dbCreateChain({
+            name: chainData.name,
+            description: chainData.description,
+            options: chainData.options,
+            tags: chainData.tags,
+            isStarterChain: chainData.isStarterChain || false,
+          });
+
+          if (newChain) {
+            imported.push(newChain);
+            logger.info(`[main.ts] Imported chain: ${chainData.name}`);
+          }
+        } catch (error) {
+          logger.error(`[main.ts] Error importing chain ${chainData.name}:`, error);
+          errors.push(`${chainData.name}: ${(error as Error).message}`);
+        }
+      }
+
+      // Notify windows of chain updates
+      if (mainWindow) mainWindow.webContents.send('chains-updated');
+      if (overlayWindow) overlayWindow.webContents.send('chains-updated');
+      if (chainManagerWindow && !chainManagerWindow.isDestroyed()) {
+        chainManagerWindow.webContents.send('chains-updated');
+      }
+
+      logger.info(`[main.ts] Import completed: ${imported.length} imported, ${skipped.length} skipped, ${errors.length} errors`);
+
+      return {
+        success: true,
+        imported: imported.length,
+        skipped: skipped.length,
+        errors,
+        chains: imported
+      };
+    } catch (error) {
+      logger.error(`[main.ts] IPC: Error in import-chains-with-dialog:`, error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('preview-import', async (event, filePath: string) => {
+    logger.info(`[main.ts] IPC: preview-import received for file: ${filePath}`);
+    try {
+      const fs = require('fs');
+      const fileContent = await fs.promises.readFile(filePath, 'utf8');
+      const importData = JSON.parse(fileContent);
+
+      // Validate basic structure
+      if (!importData.chains || !Array.isArray(importData.chains)) {
+        throw new Error('Invalid .snip file format: missing chains array');
+      }
+
+      // Check for conflicts with existing chains
+      const conflicts = [];
+      for (const chain of importData.chains) {
+        const existing = await dbGetChainByName(chain.name);
+        if (existing) {
+          conflicts.push(chain.name);
+        }
+      }
+
+      return {
+        chains: importData.chains,
+        totalChains: importData.chains.length,
+        conflicts,
+        fileSize: Buffer.byteLength(fileContent, 'utf8')
+      };
+    } catch (error) {
+      logger.error(`[main.ts] IPC: Error in preview-import:`, error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('import-chains-from-file', async (event, filePath: string, options?: any) => {
+    logger.info(`[main.ts] IPC: import-chains-from-file received for file: ${filePath}`);
+    try {
+      const fs = require('fs');
+      const fileContent = await fs.promises.readFile(filePath, 'utf8');
+      const importData = JSON.parse(fileContent);
+
+      if (!importData.chains || !Array.isArray(importData.chains)) {
+        throw new Error('Invalid .snip file format: missing chains array');
+      }
+
+      const imported = [];
+      const skipped = [];
+      const errors = [];
+
+      for (const chainData of importData.chains) {
+        try {
+          // Check if chain already exists
+          const existing = await dbGetChainByName(chainData.name);
+          
+          if (existing) {
+            const conflictResolution = options?.conflictResolution || 'skip';
+            
+            if (conflictResolution === 'skip') {
+              skipped.push(chainData.name);
+              continue;
+            } else if (conflictResolution === 'rename') {
+              // Find a unique name
+              let newName = chainData.name;
+              let counter = 1;
+              while (await dbGetChainByName(newName)) {
+                newName = `${chainData.name} (${counter})`;
+                counter++;
+              }
+              chainData.name = newName;
+            } else if (conflictResolution === 'replace') {
+              // Delete existing chain first
+              await dbDeleteChain(existing.id);
+            }
+          }
+
+          // Create the new chain
+          const newChain = dbCreateChain({
+            name: chainData.name,
+            description: chainData.description,
+            options: chainData.options,
+            tags: chainData.tags,
+            isStarterChain: chainData.isStarterChain || false,
+          });
+
+          if (newChain) {
+            imported.push(newChain);
+            logger.info(`[main.ts] Imported chain: ${chainData.name}`);
+          }
+        } catch (error) {
+          logger.error(`[main.ts] Error importing chain ${chainData.name}:`, error);
+          errors.push(`${chainData.name}: ${(error as Error).message}`);
+        }
+      }
+
+      // Notify windows of chain updates
+      if (mainWindow) mainWindow.webContents.send('chains-updated');
+      if (overlayWindow) overlayWindow.webContents.send('chains-updated');
+      if (chainManagerWindow && !chainManagerWindow.isDestroyed()) {
+        chainManagerWindow.webContents.send('chains-updated');
+      }
+
+      logger.info(`[main.ts] Import completed: ${imported.length} imported, ${skipped.length} skipped, ${errors.length} errors`);
+
+      return {
+        success: true,
+        imported: imported.length,
+        skipped: skipped.length,
+        errors,
+        chains: imported
+      };
+    } catch (error) {
+      logger.error(`[main.ts] IPC: Error in import-chains-from-file:`, error);
+      throw error;
+    }
+  });
 }
 
 app.on('ready', async () => {
   await initProductionDb();
   logger.info('[main.ts] DB initialized.');
+  
+  // Setup test data for development
+  if (process.env.NODE_ENV === 'development') {
+    await setupTestStarterChains();
+  }
+  
   createWindow();
   createOverlayWindow(); 
+  createSystemTray();
   setupIpcHandlers();
   logger.info('[main.ts] App ready, IPCs registered.');
   const s = dbGetSettings();
@@ -689,7 +1477,16 @@ app.on('ready', async () => {
 });
 
 app.on('window-all-closed', () => { if (process.platform !=='darwin') app.quit(); });
-app.on('will-quit', () => { globalShortcut.unregisterAll(); if (mouseMoveInterval) clearInterval(mouseMoveInterval); if (hoverTimeout) clearTimeout(hoverTimeout); closeDb(); });
+app.on('will-quit', () => { 
+  globalShortcut.unregisterAll(); 
+  if (mouseMoveInterval) clearInterval(mouseMoveInterval); 
+  if (hoverTimeout) clearTimeout(hoverTimeout); 
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
+  closeDb(); 
+});
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 
 export function getMainWindow(): BrowserWindow|null { return mainWindow; }
@@ -700,6 +1497,7 @@ function hideOverlay(source: string) {
     logger.info(`[main.ts] hideOverlay (source: ${source}): Requesting hide. Current state: ${overlayState}. Setting to hiding.`);
     overlayState = 'hiding';
     isHovering = false; 
+    hideAttemptScheduled = false; // Reset flag when hiding
     if (hoverTimeout) { clearTimeout(hoverTimeout); hoverTimeout = null; }
     
     if (overlayWindow && !overlayWindow.isDestroyed()) {

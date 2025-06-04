@@ -1,9 +1,10 @@
-import Database from 'better-sqlite3';
+import DatabaseConstructor, { type Database as BetterSqlite3Database, type Statement as BetterSqlite3Statement } from 'better-sqlite3';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { logger } from './logger';
 import { app } from 'electron'; // Added electron app import for userData path
+import { fixChainTagsMigration } from './migration';
 
 // Import all necessary types from types.ts
 import type { 
@@ -13,7 +14,8 @@ import type {
     Chain, 
     ChainOption, 
     Snippet, 
-    ClipboardEntry 
+    ClipboardEntry, 
+    PinnedItem
 } from './types';
 
 // Re-export types for convenience if other modules import them via db.ts
@@ -24,33 +26,37 @@ export type {
     Chain, 
     ChainOption, 
     Snippet, 
-    ClipboardEntry 
+    ClipboardEntry, 
+    PinnedItem
 } from './types';
 
-let db: Database.Database;
+let db: BetterSqlite3Database;
 
 // Declare prepared statements at module level, uninitialized
-let insertSnippetStmt: Database.Statement;
-let updateSnippetStmt: Database.Statement;
-let deleteSnippetStmt: Database.Statement;
-let getSnippetsStmt: Database.Statement;
-let getSnippetByIdStmt: Database.Statement;
-let insertChainStmt: Database.Statement;
-let updateChainStmt: Database.Statement;
-let deleteChainStmt: Database.Statement;
-let getChainsStmt: Database.Statement;
-let getChainByNameStmt: Database.Statement;
-let getChainByIdStmt: Database.Statement;
-let insertClipStmt: Database.Statement;
-let updateClipTimeStmt: Database.Statement;
-let getClipByContentStmt: Database.Statement;
-let getHistoryStmt: Database.Statement;
-let setPinnedStmt: Database.Statement;
-let deleteClipStmt: Database.Statement;
-let countUnpinnedStmt: Database.Statement;
-let oldestUnpinnedStmt: Database.Statement;
-let getSettingStmt: Database.Statement;
-let upsertSettingStmt: Database.Statement;
+let insertSnippetStmt: BetterSqlite3Statement;
+let updateSnippetStmt: BetterSqlite3Statement;
+let deleteSnippetStmt: BetterSqlite3Statement;
+let getSnippetsStmt: BetterSqlite3Statement;
+let getSnippetByIdStmt: BetterSqlite3Statement;
+let insertChainStmt: BetterSqlite3Statement;
+let updateChainStmt: BetterSqlite3Statement;
+let deleteChainStmt: BetterSqlite3Statement;
+let getChainsStmt: BetterSqlite3Statement;
+let getChainByNameStmt: BetterSqlite3Statement;
+let getChainByIdStmt: BetterSqlite3Statement;
+let insertClipStmt: BetterSqlite3Statement;
+let updateClipTimeStmt: BetterSqlite3Statement;
+let getClipByContentStmt: BetterSqlite3Statement;
+let getHistoryStmt: BetterSqlite3Statement;
+let setPinnedStmt: BetterSqlite3Statement;
+let deleteClipStmt: BetterSqlite3Statement;
+let countUnpinnedStmt: BetterSqlite3Statement;
+let oldestUnpinnedStmt: BetterSqlite3Statement;
+let getSettingStmt: BetterSqlite3Statement;
+let upsertSettingStmt: BetterSqlite3Statement;
+
+// Chain fields for SELECT statements
+const chainFields = 'id, name, description, options, tags, layoutData, createdAt, updatedAt, isPinned, isStarterChain';
 
 // This function creates tables
 function createTables() {
@@ -59,18 +65,20 @@ function createTables() {
     CREATE TABLE IF NOT EXISTS snippets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       content TEXT NOT NULL,
-      createdAt INTEGER DEFAULT (strftime('%s', 'now')) -- This default is for new tables
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      isPinned BOOLEAN DEFAULT 0 
     );
     CREATE TABLE IF NOT EXISTS chains (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
-      nodes TEXT, -- JSON array of ChainNode/ChainOption
       description TEXT,
-      tags TEXT, -- JSON array of strings
-      layoutData TEXT, -- JSON for visualizer layout
-      autoExecute INTEGER DEFAULT 0, -- Boolean: 0 for false, 1 for true
-      lastExecuted INTEGER -- Timestamp
-      -- pinned INTEGER DEFAULT 0 -- Will be added via migration
+      options TEXT, -- JSON string for options/nodes
+      tags TEXT, -- JSON string for tags array
+      layoutData TEXT, -- JSON for layout (e.g. mind map positions)
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      isPinned BOOLEAN DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS clipboard_history (
       id TEXT PRIMARY KEY,
@@ -90,18 +98,62 @@ function createTables() {
     const hasCreatedAt = snippetsTableInfo.some(col => col.name.toLowerCase() === 'createdat');
     if (!hasCreatedAt) {
       logger.info("[db.createTables] Migrating 'snippets' table: adding 'createdAt' column.");
-      db.exec('ALTER TABLE snippets ADD COLUMN createdAt INTEGER'); // Add column, default will be NULL
-      // Now, update existing NULL createdAt values for already existing rows
-      db.exec('UPDATE snippets SET createdAt = strftime(\'%s\', \'now\') WHERE createdAt IS NULL');
+      db.exec('ALTER TABLE snippets ADD COLUMN createdAt DATETIME'); // SQLite uses TEXT for DATETIME affinity
+      db.exec("UPDATE snippets SET createdAt = datetime('now') WHERE createdAt IS NULL");
       logger.info("[db.createTables] Column 'createdAt' added and populated for existing rows in 'snippets' table.");
     }
+
+    // Migration for snippets table: updatedAt column
+    const hasUpdatedAt = snippetsTableInfo.some(col => col.name.toLowerCase() === 'updatedat');
+    if (!hasUpdatedAt) {
+      logger.info("[db.createTables] Migrating 'snippets' table: adding 'updatedAt' column.");
+      db.exec('ALTER TABLE snippets ADD COLUMN updatedAt DATETIME'); // SQLite uses TEXT for DATETIME affinity
+      db.exec("UPDATE snippets SET updatedAt = datetime('now') WHERE updatedAt IS NULL");
+      logger.info("[db.createTables] Column 'updatedAt' added and populated for existing rows in 'snippets' table.");
+    }
+
+    // Migration for snippets table: isPinned column
+    const hasIsPinned = snippetsTableInfo.some(col => col.name.toLowerCase() === 'ispinned');
+    if (!hasIsPinned) {
+      logger.info("[db.createTables] Migrating 'snippets' table: adding 'isPinned' column.");
+      db.exec('ALTER TABLE snippets ADD COLUMN isPinned BOOLEAN DEFAULT 0');
+      logger.info("[db.createTables] Column 'isPinned' added to 'snippets' table with default value 0.");
+    }
   } catch (error) {
-    logger.error("[db.createTables] Error during snippets table migration for 'createdAt':", error);
+    logger.error("[db.createTables] Error during snippets table migration for 'createdAt', 'updatedAt', or 'isPinned':", error);
   }
 
   // Migration for autoExecute and lastExecuted on chains table
   try {
     const chainsTableInfo = db.pragma('table_info(chains)') as { name: string }[];
+    
+    // Migration for chains table: options column (TEXT for JSON)
+    const hasOptions = chainsTableInfo.some(col => col.name.toLowerCase() === 'options');
+    if (!hasOptions) {
+      logger.info("[db.createTables] Migrating 'chains' table: adding 'options' column (TEXT for JSON).");
+      db.exec('ALTER TABLE chains ADD COLUMN options TEXT;');
+      logger.info("[db.createTables] Column 'options' added to 'chains' table.");
+
+      const hasLegacyNodes = chainsTableInfo.some(col => col.name.toLowerCase() === 'nodes');
+      if (hasLegacyNodes) {
+        logger.info("[db.createTables] Legacy 'nodes' column found. Attempting to transfer its content to new 'options' column.");
+        try {
+          const transferStmt = db.prepare("UPDATE chains SET options = nodes WHERE options IS NULL AND nodes IS NOT NULL");
+          const transferResult = transferStmt.run();
+          logger.info(`[db.createTables] Data from legacy 'nodes' column transferred to 'options' column for ${transferResult.changes} rows where 'options' was NULL.`);
+          
+          // After transferring data, set default value for nodes column to handle new inserts
+          logger.info("[db.createTables] Setting default value for legacy 'nodes' column to handle new inserts.");
+          db.exec("UPDATE chains SET nodes = '[]' WHERE nodes IS NULL");
+          logger.info("[db.createTables] Legacy 'nodes' column populated with default empty array for NULL values.");
+        } catch (transferError) {
+          logger.error("[db.createTables] Error transferring data from legacy 'nodes' to 'options' in 'chains' table:", transferError);
+        }
+      } else {
+        logger.info("[db.createTables] 'options' column added. No legacy 'nodes' column found to transfer data from.");
+      }
+    }
+
     const hasAutoExecute = chainsTableInfo.some(col => col.name === 'autoExecute');
     if (!hasAutoExecute) {
       db.exec('ALTER TABLE chains ADD COLUMN autoExecute INTEGER DEFAULT 0');
@@ -112,13 +164,64 @@ function createTables() {
       db.exec('ALTER TABLE chains ADD COLUMN lastExecuted INTEGER');
       logger.info("[db.createTables] Column 'lastExecuted' added to 'chains' table.");
     }
-    const hasPinned = chainsTableInfo.some(col => col.name === 'pinned');
+    const hasPinned = chainsTableInfo.some(col => col.name === 'pinned'); // This might be for the old 'pinned' column
     if (!hasPinned) {
+      // Assuming this was for the old `pinned` column, let's be cautious.
+      // If `isPinned` is the standard, this migration might need re-evaluation or be for legacy.
+      // For now, keeping as is, but focusing on `updatedAt`.
       db.exec('ALTER TABLE chains ADD COLUMN pinned INTEGER DEFAULT 0');
-      logger.info("[db.createTables] Column 'pinned' added to 'chains' table.");
+      logger.info("[db.createTables] Column 'pinned' (potentially legacy) added to 'chains' table.");
     }
+
+    // Migration for chains table: createdAt column
+    const hasChainsCreatedAt = chainsTableInfo.some(col => col.name.toLowerCase() === 'createdat');
+    if (!hasChainsCreatedAt) {
+      logger.info("[db.createTables] Migrating 'chains' table: adding 'createdAt' column.");
+      db.exec('ALTER TABLE chains ADD COLUMN createdAt DATETIME');
+      logger.info("[db.createTables] Column 'createdAt' added to 'chains' table. Populating with current time for existing rows.");
+      db.exec("UPDATE chains SET createdAt = datetime('now') WHERE createdAt IS NULL");
+      logger.info("[db.createTables] Column 'createdAt' populated for existing rows in 'chains' table.");
+    }
+
+    // Migration for chains table: updatedAt column
+    const hasChainsUpdatedAt = chainsTableInfo.some(col => col.name.toLowerCase() === 'updatedat');
+    if (!hasChainsUpdatedAt) {
+      logger.info("[db.createTables] Migrating 'chains' table: adding 'updatedAt' column.");
+      db.exec('ALTER TABLE chains ADD COLUMN updatedAt DATETIME');
+      db.exec("UPDATE chains SET updatedAt = datetime('now') WHERE updatedAt IS NULL");
+      logger.info("[db.createTables] Column 'updatedAt' added and populated for existing rows in 'chains' table.");
+    }
+
+    // Migration for chains table: isPinned column (canonical)
+    const hasChainsIsPinned = chainsTableInfo.some(col => col.name.toLowerCase() === 'ispinned');
+    if (!hasChainsIsPinned) {
+      logger.info("[db.createTables] Migrating 'chains' table: adding canonical 'isPinned' column.");
+      db.exec('ALTER TABLE chains ADD COLUMN isPinned BOOLEAN DEFAULT 0');
+      logger.info("[db.createTables] Column 'isPinned' added to 'chains' table with default value 0.");
+      
+      const hasLegacyPinned = chainsTableInfo.some(col => col.name.toLowerCase() === 'pinned');
+      if (hasLegacyPinned) {
+        logger.info("[db.createTables] Legacy 'pinned' column found on 'chains' table. Attempting to transfer data to 'isPinned'.");
+        try {
+          const stmt = db.prepare("UPDATE chains SET isPinned = 1 WHERE (isPinned = 0 OR isPinned IS NULL) AND pinned = 1");
+          const transferResult = stmt.run();
+          logger.info(`[db.createTables] Transfered data from legacy 'pinned' to 'isPinned' for ${transferResult.changes} rows in 'chains' table.`);
+        } catch (transferError) {
+          logger.error("[db.createTables] Error transferring data from legacy 'pinned' to 'isPinned' in 'chains' table:", transferError);
+        }
+      }
+    }
+
+    // Migration for chains table: isStarterChain column
+    const hasIsStarterChain = chainsTableInfo.some(col => col.name.toLowerCase() === 'isstarterchain');
+    if (!hasIsStarterChain) {
+      logger.info("[db.createTables] Migrating 'chains' table: adding 'isStarterChain' column.");
+      db.exec('ALTER TABLE chains ADD COLUMN isStarterChain BOOLEAN DEFAULT 0');
+      logger.info("[db.createTables] Column 'isStarterChain' added to 'chains' table with default value 0.");
+    }
+
   } catch (error) {
-    logger.error("[db.createTables] Error during chains table migration for new columns:", error);
+    logger.error("[db.createTables] Error during chains table migration for columns (options, autoExecute, lastExecuted, pinned, createdAt, updatedAt, isPinned):", error);
   }
 
   logger.info("[db.createTables] Database tables ensured/migrated successfully.");
@@ -137,7 +240,7 @@ export function initDb(dbPath: string = ':memory:') {
   }
 
   logger.info(`Initializing database at: ${dbPath}`);
-  db = new Database(dbPath);
+  db = new DatabaseConstructor(dbPath);
 
   createTables();
   prepareStatements(); // New function to hold all statement preps
@@ -153,34 +256,42 @@ export function initProductionDb() {
   logger.info('Initializing production database...');
   const userDataPath = app.getPath('userData');
   const SNIPFLOW_DIR = join(userDataPath, '.snipflow'); 
-  if (!existsSync(SNIPFLOW_DIR)) {
-    mkdirSync(SNIPFLOW_DIR, { recursive: true });
-  }
-  const DB_PATH = join(SNIPFLOW_DIR, 'snippets.db');
-  
+if (!existsSync(SNIPFLOW_DIR)) {
+  mkdirSync(SNIPFLOW_DIR, { recursive: true });
+}
+const DB_PATH = join(SNIPFLOW_DIR, 'snippets.db');
+
   initDb(DB_PATH); // Call the main initDb with specific path
+  
+  // Run chain tags migration after database initialization
+  try {
+    const migrationResult = fixChainTagsMigration(db);
+    if (migrationResult.success) {
+      logger.info(`[DB] Chain tags migration completed successfully. Fixed ${migrationResult.fixedCount} chains.`);
+    } else {
+      logger.error('[DB] Chain tags migration failed.');
+    }
+  } catch (error) {
+    logger.error('[DB] Error running chain tags migration:', error);
+  }
 }
 
 function prepareStatements() {
   if (!db) throw new Error("DB not initialized for prepareStatements");
   logger.info('[db.prepareStatements] Preparing SQL statements...');
   
-  getSnippetsStmt = db.prepare('SELECT id, content, createdAt FROM snippets ORDER BY createdAt DESC');
-  getSnippetByIdStmt = db.prepare('SELECT id, content, createdAt FROM snippets WHERE id = ?');
-  insertSnippetStmt = db.prepare('INSERT INTO snippets (content) VALUES (?)');
-  updateSnippetStmt = db.prepare('UPDATE snippets SET content = ? WHERE id = ?');
+  getSnippetsStmt = db.prepare('SELECT id, content, createdAt, updatedAt, isPinned FROM snippets ORDER BY updatedAt DESC');
+  getSnippetByIdStmt = db.prepare('SELECT id, content, createdAt, updatedAt, isPinned FROM snippets WHERE id = ?');
+  insertSnippetStmt = db.prepare('INSERT INTO snippets (content) VALUES (?) RETURNING id, content, createdAt, updatedAt, isPinned');
   deleteSnippetStmt = db.prepare('DELETE FROM snippets WHERE id = ?');
-
-  const chainFields = 'id, name, nodes, description, tags, layoutData, autoExecute, lastExecuted, pinned';
   getChainsStmt = db.prepare(`SELECT ${chainFields} FROM chains ORDER BY name ASC`);
   getChainByNameStmt = db.prepare(`SELECT ${chainFields} FROM chains WHERE name = ?`);
   getChainByIdStmt = db.prepare(`SELECT ${chainFields} FROM chains WHERE id = ?`);
-  // Ensure the number of ? matches the columns, including pinned
   insertChainStmt = db.prepare(
-    'INSERT INTO chains (name, nodes, description, tags, layoutData, autoExecute, lastExecuted, pinned) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    `INSERT INTO chains (name, options, description, tags, layoutData, isPinned, isStarterChain, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now')) RETURNING ${chainFields}`
   );
   updateChainStmt = db.prepare(
-    'UPDATE chains SET name = ?, nodes = ?, description = ?, tags = ?, layoutData = ?, autoExecute = ?, lastExecuted = ?, pinned = ? WHERE id = ?'
+    'UPDATE chains SET name = @name, description = @description, options = @options, tags = @tags, layoutData = @layoutData, isPinned = @isPinned, isStarterChain = @isStarterChain, autoExecute = @autoExecute, lastExecuted = @lastExecuted, updatedAt = datetime(\'now\') WHERE id = @id'
   );
   deleteChainStmt = db.prepare('DELETE FROM chains WHERE id = ?');
   insertClipStmt = db.prepare('INSERT INTO clipboard_history(id, content, timestamp) VALUES (?, ?, ?)');
@@ -204,17 +315,79 @@ export function closeDb() {
 
 export function getSnippets(): Snippet[] {
   if (!db) throw new Error("DB not initialized for getSnippets");
+  logger.info('[db.getSnippets] Fetching all snippets.');
   return getSnippetsStmt.all() as Snippet[];
 }
 
-export function createSnippet(content: string): void {
-  if (!db) throw new Error("DB not initialized for createSnippet");
-  insertSnippetStmt.run(content);
+export function getSnippetById(id: number): Snippet | undefined {
+  if (!db) throw new Error("DB not initialized for getSnippetById");
+  const stmt = db.prepare('SELECT id, content, createdAt, updatedAt, isPinned FROM snippets WHERE id = ?');
+  const result = stmt.get(id) as Snippet | undefined;
+  if (result) {
+    result.isPinned = !!result.isPinned;
+  }
+  return result;
 }
 
-export function updateSnippet(id: number, content: string): void {
+export function createSnippet(snippetData: Partial<Snippet>): Snippet {
+  if (!db) throw new Error("DB not initialized for createSnippet");
+  logger.info('[DB] Creating snippet:', snippetData.content?.substring(0, 20));
+  
+  const defaults = { content: '', isPinned: false };
+  const finalSnippetData = { ...defaults, ...snippetData };
+
+  const stmt = db.prepare(
+    "INSERT INTO Snippets (content, isPinned, createdAt, updatedAt) VALUES (?, ?, datetime('now'), datetime('now'))"
+  );
+  const result = stmt.run(finalSnippetData.content, finalSnippetData.isPinned ? 1 : 0);
+  
+  const newSnippetId = result.lastInsertRowid as number;
+  const newSnippet = getSnippetById(newSnippetId);
+  if (!newSnippet) {
+    logger.error(`[DB] Failed to retrieve newly created snippet with id: ${newSnippetId}`);
+    throw new Error('Failed to create or retrieve snippet');
+  }
+  return newSnippet;
+}
+
+export function updateSnippet(id: number, data: { content?: string; isPinned?: boolean }): { success: boolean } {
   if (!db) throw new Error("DB not initialized for updateSnippet");
-  updateSnippetStmt.run(content, id);
+  logger.info(`[DB] Updating snippet ${id} with data:`, data);
+  
+  if (data.content === undefined && data.isPinned === undefined) {
+    logger.warn('[DB] updateSnippet called with no data to update.');
+    return { success: false };
+  }
+
+  const fieldsToUpdate: string[] = [];
+  const params: (string | number | null)[] = [];
+
+  if (data.content !== undefined) {
+    fieldsToUpdate.push('content = ?');
+    params.push(data.content);
+  }
+  if (data.isPinned !== undefined) {
+    fieldsToUpdate.push('isPinned = ?');
+    params.push(data.isPinned ? 1 : 0);
+  }
+
+  if (fieldsToUpdate.length === 0) {
+    logger.warn('[DB] updateSnippet: No valid fields found for update after checks.');
+    return { success: false };
+  }
+
+  fieldsToUpdate.push("updatedAt = datetime('now')");
+  const query = `UPDATE Snippets SET ${fieldsToUpdate.join(', ')} WHERE id = ?`;
+  params.push(id);
+
+  try {
+    const stmt = db.prepare(query);
+    const result = stmt.run(...params);
+    return { success: result.changes > 0 };
+  } catch (error: any) {
+    logger.error('[DB] Error updating snippet:', error.message);
+    return { success: false };
+  }
 }
 
 export function deleteSnippet(id: number): void {
@@ -224,264 +397,319 @@ export function deleteSnippet(id: number): void {
 
 export function getChains(): Chain[] {
   if (!db) throw new Error("DB not initialized for getChains");
+  logger.info('[db.getChains] Fetching all chains.');
   return (
     getChainsStmt.all().map((row: any) => {
       let parsedOptions: ChainOption[] = [];
-      try {
-        if (row.nodes) {
-          parsedOptions = JSON.parse(row.nodes);
-          // Basic validation
-          if (!Array.isArray(parsedOptions) || !parsedOptions.every(opt => typeof opt === 'object' && opt !== null && 'id' in opt && 'title' in opt && 'body' in opt)) {
-            logger.warn(`[db.getChains] Chain ID ${row.id} ('${row.name}') has malformed options structure after parsing. Defaulting to empty options. Parsed:`, parsedOptions);
+      if (row.options) {
+        try {
+          parsedOptions = JSON.parse(row.options);
+          if (!Array.isArray(parsedOptions) || !parsedOptions.every(opt => 
+            typeof opt === 'object' && opt !== null && 
+            'id' in opt && typeof opt.id === 'string' &&
+            'title' in opt && typeof opt.title === 'string' &&
+            'body' in opt && typeof opt.body === 'string' // Add more checks as per ChainOption structure
+          )) {
+            logger.warn(`[db.getChains] Chain ID ${row.id} ('${row.name}') has malformed 'options' structure after parsing. Defaulting to empty options. Parsed:`, parsedOptions);
             parsedOptions = [];
           }
-        } else {
-          logger.warn(`[db.getChains] Chain ID ${row.id} ('${row.name}') has null or undefined 'nodes' field. Defaulting to empty options.`);
+        } catch (error) {
+          logger.error(`[db.getChains] Failed to parse 'options' for chain ID ${row.id} ('${row.name}'). Options string: '${row.options}'. Error:`, error);
           parsedOptions = [];
         }
-      } catch (error) {
-        logger.error(`[db.getChains] Failed to parse 'nodes' for chain ID ${row.id} ('${row.name}'). Nodes string: '${row.nodes}'. Error:`, error);
-        parsedOptions = []; // Default to empty array on parsing error
+      } else {
+        logger.warn(`[db.getChains] Chain ID ${row.id} ('${row.name}') has null or undefined 'options' field. Defaulting to empty options.`);
+        parsedOptions = [];
       }
-      return {
-        id: row.id,
-        name: row.name,
-        nodes: row.nodes, // Keep raw nodes string
-        options: parsedOptions,
+
+      let parsedTags: string[] = [];
+      if (row.tags) {
+        try {
+          const tempTags = JSON.parse(row.tags);
+          if (Array.isArray(tempTags) && tempTags.every(tag => typeof tag === 'string')) {
+            parsedTags = tempTags;
+          } else {
+            logger.warn(`[db.getChains] Chain ID ${row.id} ('${row.name}') has malformed 'tags' structure after parsing. Defaulting to empty tags. Parsed:`, tempTags);
+            // parsedTags remains []
+          }
+        } catch (error) {
+          logger.error(`[db.getChains] Failed to parse 'tags' for chain ID ${row.id} ('${row.name}'). Tags string: '${row.tags}'. Error:`, error);
+          // parsedTags remains []
+        }
+      }
+
+      const chainResult: Chain = {
+      id: row.id,
+      name: row.name,
         description: row.description,
-        tags: row.tags ? JSON.parse(row.tags) : null, // Assuming tags also need try-catch if problematic
+        options: parsedOptions,
+        tags: parsedTags, // If parsedTags is already an empty array by default, this is fine.
         layoutData: row.layoutData,
-        autoExecute: !!row.autoExecute, // Convert 0/1 to boolean
-        lastExecuted: row.lastExecuted,
-        pinned: !!row.pinned
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        isPinned: !!row.isPinned, // Ensure boolean conversion
+        isStarterChain: !!row.isStarterChain, // Ensure boolean conversion
+        // autoExecute and lastExecuted are not in chainFields by default, add them if needed
       };
+      
+      // Conditionally add autoExecute and lastExecuted if they exist on the row object
+      // This depends on whether they are included in the 'chainFields' used by getChainsStmt
+      // The current chainFields ('id, name, description, options, tags, layoutData, createdAt, updatedAt, isPinned')
+      // does NOT include autoExecute or lastExecuted. If these are needed, chainFields must be updated.
+      // For now, we assume they are not part of the standard getChains() result unless chainFields is changed.
+      if (row.hasOwnProperty('autoExecute')) {
+        chainResult.autoExecute = !!row.autoExecute;
+      }
+      if (row.hasOwnProperty('lastExecuted')) {
+        chainResult.lastExecuted = row.lastExecuted;
+      }
+
+      return chainResult;
     })
   );
 }
 
 export function getChainByName(name: string): Chain | undefined {
   if (!db) throw new Error("DB not initialized for getChainByName");
-  const row = getChainByNameStmt.get(name) as any;
-  if (!row) return undefined;
+  logger.info(`[db.getChainByName] Fetching chain by name: ${name}`);
+  const row = getChainByNameStmt.get(name) as any; // Row will include all fields from chainFields
+    if (!row) return undefined;
 
   let parsedOptions: ChainOption[] = [];
-  try {
-    if (row.nodes) {
-      parsedOptions = JSON.parse(row.nodes);
-      if (!Array.isArray(parsedOptions) || !parsedOptions.every(opt => typeof opt === 'object' && opt !== null && 'id' in opt && 'title' in opt && 'body' in opt)) {
-        logger.warn(`[db.getChainByName] Chain ID ${row.id} ('${row.name}') has malformed options structure after parsing. Defaulting to empty options. Parsed:`, parsedOptions);
+  if (row.options) {
+    try {
+      parsedOptions = JSON.parse(row.options);
+      if (!Array.isArray(parsedOptions) || !parsedOptions.every(opt => 
+        typeof opt === 'object' && opt !== null && 
+        'id' in opt && typeof opt.id === 'string' &&
+        'title' in opt && typeof opt.title === 'string' &&
+        'body' in opt && typeof opt.body === 'string'
+      )) {
+        logger.warn(`[db.getChainByName] Chain ID ${row.id} ('${row.name}') has malformed 'options' structure after parsing. Defaulting to empty options. Parsed:`, parsedOptions);
         parsedOptions = [];
       }
-    } else {
-      logger.warn(`[db.getChainByName] Chain ID ${row.id} ('${row.name}') has null or undefined 'nodes' field. Defaulting to empty options.`);
+    } catch (error) {
+      logger.error(`[db.getChainByName] Failed to parse 'options' for chain ID ${row.id} ('${row.name}'). Options string: '${row.options}'. Error:`, error);
       parsedOptions = [];
     }
-  } catch (error) {
-    logger.error(`[db.getChainByName] Failed to parse 'nodes' for chain ID ${row.id} ('${row.name}'). Nodes string: '${row.nodes}'. Error:`, error);
+  } else {
+    logger.warn(`[db.getChainByName] Chain ID ${row.id} ('${row.name}') has null or undefined 'options' field. Defaulting to empty options.`);
     parsedOptions = [];
   }
 
-  let parsedTags: string[] | null = null;
-  try {
-    if (row.tags) {
-      parsedTags = JSON.parse(row.tags);
-      if (!Array.isArray(parsedTags) || !parsedTags.every(tag => typeof tag === 'string')) {
-          logger.warn(`[db.getChainByName] Chain ID ${row.id} ('${row.name}') has malformed tags structure after parsing. Defaulting to null. Parsed:`, parsedTags);
-          parsedTags = null;
+  let parsedTags: string[] = [];
+  if (row.tags) {
+    try {
+      const tempTags = JSON.parse(row.tags);
+      if (Array.isArray(tempTags) && tempTags.every(tag => typeof tag === 'string')) {
+        parsedTags = tempTags;
+      } else if (tempTags !== null && tempTags !== undefined) {
+        logger.warn(`[db.getChainByName] Chain ID ${row.id} ('${row.name}') has malformed 'tags' structure after parsing. Defaulting to empty tags. Parsed:`, tempTags);
       }
-    }
-  } catch (error) {
+    } catch (error) {
       logger.error(`[db.getChainByName] Failed to parse 'tags' for chain ID ${row.id} ('${row.name}'). Tags string: '${row.tags}'. Error:`, error);
-      parsedTags = null;
+    }
   }
 
-  return {
+  const returnObj: Chain = {
     id: row.id,
     name: row.name,
-    nodes: row.nodes, // Keep raw nodes string
-    options: parsedOptions,
     description: row.description,
-    tags: parsedTags, 
+    options: parsedOptions,
+    tags: parsedTags,
     layoutData: row.layoutData,
-    autoExecute: !!row.autoExecute, // Convert 0/1 to boolean
-    lastExecuted: row.lastExecuted,
-    pinned: !!row.pinned
+    createdAt: row.createdAt, 
+    updatedAt: row.updatedAt, 
+    isPinned: !!row.isPinned,
+    isStarterChain: !!row.isStarterChain,
   };
+
+  return returnObj;
 }
 
 export function getChainById(id: number): Chain | undefined {
   if (!db) throw new Error("DB not initialized for getChainById");
+  logger.info(`[db.getChainById] Fetching chain by ID: ${id}`);
   const row = getChainByIdStmt.get(id) as any;
-  if (!row) return undefined;
 
-  let parsedOptions: ChainOption[] = [];
+  if (!row) {
+    return undefined;
+  }
+
   try {
-    if (row.nodes) {
-      parsedOptions = JSON.parse(row.nodes);
-      if (!Array.isArray(parsedOptions) || !parsedOptions.every(opt => typeof opt === 'object' && opt !== null && 'id' in opt && 'title' in opt && 'body' in opt)) {
-        logger.warn(`[db.getChainById] Chain ID ${row.id} ('${row.name}') has malformed options structure after parsing. Defaulting to empty options. Parsed:`, parsedOptions);
+    let parsedOptions: ChainOption[] = [];
+    if (row.options) {
+      parsedOptions = JSON.parse(row.options);
+      if (!Array.isArray(parsedOptions) || !parsedOptions.every(opt =>
+        typeof opt === 'object' && opt !== null &&
+        'id' in opt && typeof opt.id === 'string' &&
+        'title' in opt && typeof opt.title === 'string' &&
+        'body' in opt && typeof opt.body === 'string'
+      )) {
+        logger.warn(`[db.getChainById] Chain ID ${row.id} ('${row.name}') has malformed 'options' structure after parsing. Defaulting to empty options. Parsed:`, parsedOptions);
         parsedOptions = [];
       }
     } else {
-      logger.warn(`[db.getChainById] Chain ID ${row.id} ('${row.name}') has null or undefined 'nodes' field. Defaulting to empty options.`);
+      logger.warn(`[db.getChainById] Chain ID ${row.id} ('${row.name}') has null or undefined 'options' field. Defaulting to empty options.`);
       parsedOptions = [];
     }
-  } catch (error) {
-    logger.error(`[db.getChainById] Failed to parse 'nodes' for chain ID ${row.id} ('${row.name}'). Nodes string: '${row.nodes}'. Error:`, error);
-    parsedOptions = [];
-  }
 
-  let parsedTags: string[] | null = null;
-  try {
+    let parsedTags: string[] = [];
     if (row.tags) {
-      parsedTags = JSON.parse(row.tags);
-      if (!Array.isArray(parsedTags) || !parsedTags.every(tag => typeof tag === 'string')) {
-          logger.warn(`[db.getChainById] Chain ID ${row.id} ('${row.name}') has malformed tags structure after parsing. Defaulting to null. Parsed:`, parsedTags);
-          parsedTags = null;
+      try {
+        const tempTags = JSON.parse(row.tags);
+        if (Array.isArray(tempTags) && tempTags.every(tag => typeof tag === 'string')) {
+          parsedTags = tempTags;
+        } else if (tempTags !== null && tempTags !== undefined) {
+          logger.warn(`[db.getChainById] Chain ID ${row.id} ('${row.name}') has malformed 'tags' structure after parsing. Defaulting to empty tags. Parsed:`, tempTags);
+        }
+      } catch (error) {
+        logger.error(`[db.getChainById] Failed to parse 'tags' for chain ID ${row.id} ('${row.name}'). Tags string: '${row.tags}'. Error:`, error);
       }
     }
-  } catch (error) {
-      logger.error(`[db.getChainById] Failed to parse 'tags' for chain ID ${row.id} ('${row.name}'). Tags string: '${row.tags}'. Error:`, error);
-      parsedTags = null;
-  }
 
-  return {
-    id: row.id,
-    name: row.name,
-    nodes: row.nodes, // Keep raw nodes string
-    options: parsedOptions,
-    description: row.description,
-    tags: parsedTags,
-    layoutData: row.layoutData,
-    autoExecute: !!row.autoExecute, // Convert 0/1 to boolean
-    lastExecuted: row.lastExecuted,
-    pinned: !!row.pinned
-  };
+    const chainResult: Chain = {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      options: parsedOptions,
+      tags: parsedTags,
+      layoutData: row.layoutData,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      isPinned: !!row.isPinned,
+      isStarterChain: !!row.isStarterChain,
+    };
+
+    return chainResult;
+
+  } catch (e) {
+    logger.error(`[db.getChainById] Error parsing JSON or processing fields for chain ${id}:`, e);
+    return undefined;
+  }
 }
 
-export function createChain(
-  name: string,
-  options: ChainOption[],
-  description?: string | null,
-  tags?: string[] | null,
-  layoutData?: string | null,
-  pinned?: boolean
-): Chain {
+export function createChain(chainData: Partial<Chain>): Chain | null {
   if (!db) throw new Error("DB not initialized for createChain");
-  const nodesString = JSON.stringify(options || []);
-  const tagsString = tags ? JSON.stringify(tags) : null;
-  const autoExecuteValue = 0;
-  const lastExecutedValue = null;
-  const pinnedValue = pinned ? 1 : 0;
+  
+  const defaults: Partial<Chain> = {
+    name: `Chain_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    description: '',
+    tags: [],
+    options: [],
+    layoutData: '{}',
+    isPinned: false,
+    isStarterChain: false
+  };
+  const finalChainData = { ...defaults, ...chainData };
+  logger.info(`[DB] Attempting to create chain with effective name: ${finalChainData.name}`);
 
-  logger.info(
-    `[db.createChain] Attempting to create chain. Name: '${name}', ` +
-    `Options: ${nodesString ? nodesString.substring(0,100) + '...' : nodesString}, Desc: '${description}', ` +
-    `Tags: ${tagsString}, Layout: '${layoutData}', ` +
-    `AutoExec: ${autoExecuteValue}, LastExec: ${lastExecutedValue}, Pinned: ${pinnedValue}`
-  );
+  if (!finalChainData.name) {
+    logger.error('[DB] Chain name is required to create a chain.');
+    return null;
+  }
 
   try {
-    const result = insertChainStmt.run(
-      name,
-      nodesString,
-      description,
-      tagsString,
-      layoutData,
-      autoExecuteValue,
-      lastExecutedValue,
-      pinnedValue
-    );
-    const newChainId = result.lastInsertRowid as number;
-    logger.info(`[db.createChain] Successfully created chain ID ${newChainId} with name '${name}'.`);
-    // Fetch and return the newly created chain, now including all fields
-    const newChain = getChainById(newChainId);
-    if (!newChain) { // Should not happen if insert succeeded
-      logger.error(`[db.createChain] Failed to retrieve newly created chain ID ${newChainId}.`);
-      throw new Error (`Failed to retrieve newly created chain ID ${newChainId}`);
+    // Check if legacy 'nodes' column exists and include it in the insert
+    const chainsTableInfo = db.pragma('table_info(chains)') as { name: string }[];
+    const hasLegacyNodes = chainsTableInfo.some(col => col.name.toLowerCase() === 'nodes');
+    
+    let insertQuery: string;
+    let insertParams: any;
+    
+    if (hasLegacyNodes) {
+      // Include nodes column for legacy database compatibility
+      insertQuery = "INSERT INTO Chains (name, description, tags, options, nodes, layoutData, isPinned, isStarterChain, createdAt, updatedAt) VALUES (@name, @description, @tags, @options, @nodes, @layoutData, @isPinned, @isStarterChain, datetime('now'), datetime('now'))";
+      insertParams = {
+        name: finalChainData.name,
+        description: finalChainData.description,
+        tags: JSON.stringify(finalChainData.tags || []),
+        options: JSON.stringify(finalChainData.options || []),
+        nodes: JSON.stringify(finalChainData.options || []), // Use same data as options for legacy compatibility
+        layoutData: typeof finalChainData.layoutData === 'string' ? finalChainData.layoutData : JSON.stringify(finalChainData.layoutData || {}),
+        isPinned: finalChainData.isPinned ? 1 : 0,
+        isStarterChain: finalChainData.isStarterChain ? 1 : 0,
+      };
+    } else {
+      // Standard insert without legacy nodes column
+      insertQuery = "INSERT INTO Chains (name, description, tags, options, layoutData, isPinned, isStarterChain, createdAt, updatedAt) VALUES (@name, @description, @tags, @options, @layoutData, @isPinned, @isStarterChain, datetime('now'), datetime('now'))";
+      insertParams = {
+        name: finalChainData.name,
+        description: finalChainData.description,
+        tags: JSON.stringify(finalChainData.tags || []),
+        options: JSON.stringify(finalChainData.options || []),
+        layoutData: typeof finalChainData.layoutData === 'string' ? finalChainData.layoutData : JSON.stringify(finalChainData.layoutData || {}),
+        isPinned: finalChainData.isPinned ? 1 : 0,
+        isStarterChain: finalChainData.isStarterChain ? 1 : 0,
+      };
     }
-    return newChain;
-  } catch (error) {
-    logger.error(`[db.createChain] Error executing insertChainStmt for name '${name}':`, error);
-    throw error; // Re-throw to allow IPC handler to catch and respond
+    
+    const stmt = db.prepare(insertQuery);
+    const result = stmt.run(insertParams);
+    const newChainId = result.lastInsertRowid as number;
+    logger.info(`[DB] Chain created successfully with ID: ${newChainId}`);
+    return getChainById(newChainId) || null;
+  } catch (error: any) {
+    logger.error(`[DB] Error creating chain '${finalChainData.name}':`, error.message);
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      logger.warn(`[DB] A chain with name '${finalChainData.name}' already exists.`);
+    }
+    return null;
   }
 }
 
-export function updateChain(
-  id: number,
-  data: Partial<Omit<Chain, 'id'>>
-): void {
+export function updateChain(id: number, data: Partial<Omit<Chain, 'id' | 'createdAt' | 'updatedAt'>>): { success: boolean; error?: string } {
   if (!db) throw new Error("DB not initialized for updateChain");
-  logger.info(`[db.updateChain] Called for ID: ${id} with data:`, JSON.stringify(data, null, 2));
+  logger.info(`[DB] Updating chain ${id} with data:`, data);
 
-  const existingChain = getChainByIdStmt.get(id) as any;
-  if (!existingChain) {
-    logger.error(`[db.updateChain] No existing chain found for ID: ${id}. Update aborted.`);
-    throw new Error(`No chain found with ID ${id} to update.`);
+  if (Object.keys(data).length === 0) {
+    logger.warn('[DB] updateChain called with no data to update.');
+    return { success: false, error: 'No data provided for update.' };
   }
-  
-  logger.info(`[db.updateChain] Existing chain raw data for ID ${id}:`, JSON.stringify(existingChain, null, 2));
 
-  const name = data.name;
-  const options = data.options;
-  const description = data.description;
-  const tags = data.tags;
-  const layoutData = data.layoutData;
-  const autoExecute = data.autoExecute;
-  const lastExecuted = data.lastExecuted;
-  const pinned = data.pinned;
+  const fields: string[] = [];
+  const params: any[] = [];
 
-  const nodesToStore = data.hasOwnProperty('options') && options !== undefined 
-    ? JSON.stringify(options) 
-    : existingChain.nodes;
+  if (data.name !== undefined) { fields.push('name = ?'); params.push(data.name); }
+  if (data.description !== undefined) { fields.push('description = ?'); params.push(data.description); }
+  if (data.tags !== undefined) { fields.push('tags = ?'); params.push(JSON.stringify(data.tags)); }
+  if (data.options !== undefined) { fields.push('options = ?'); params.push(JSON.stringify(data.options)); }
+  if (data.layoutData !== undefined) { fields.push('layoutData = ?'); params.push(typeof data.layoutData === 'string' ? data.layoutData : JSON.stringify(data.layoutData)); }
+  if (data.isPinned !== undefined) { fields.push('isPinned = ?'); params.push(data.isPinned ? 1 : 0); }
+  if (data.autoExecute !== undefined) { fields.push('autoExecute = ?'); params.push(data.autoExecute ? 1 : 0); }
+  if (data.lastExecuted !== undefined) { fields.push('lastExecuted = ?'); params.push(data.lastExecuted); }
+  if (data.isStarterChain !== undefined) { fields.push('isStarterChain = ?'); params.push(data.isStarterChain ? 1 : 0); }
 
-  const tagsToStore = data.hasOwnProperty('tags') 
-    ? (tags ? JSON.stringify(tags) : null)
-    : existingChain.tags;
-    
-  logger.info(`[db.updateChain] Processing update for ID ${id}:`);
-  logger.info(`  > Received Name defined: ${data.hasOwnProperty('name')}, Value: ${name}`);
-  logger.info(`  > Existing Raw Name: ${existingChain.name}`);
-  logger.info(`  > Received Options defined: ${data.hasOwnProperty('options')}, Value: ${options ? JSON.stringify(options).substring(0,50) + '...': options}`);
-  logger.info(`  > Existing Raw Nodes: ${existingChain.nodes ? existingChain.nodes.substring(0,50) + '...' : existingChain.nodes}`);
-  logger.info(`  > Nodes to Store: ${nodesToStore ? nodesToStore.substring(0,50) + '...' : nodesToStore}`);
-  logger.info(`  > Received Description defined: ${data.hasOwnProperty('description')}, Value: ${description}`);
-  logger.info(`  > Existing Raw Description: ${existingChain.description}`);
-  logger.info(`  > Received Tags defined: ${data.hasOwnProperty('tags')}, Value: ${tags ? JSON.stringify(tags) : tags}`);
-  logger.info(`  > Existing Raw Tags: ${existingChain.tags}`);
-  logger.info(`  > Tags to Store: ${tagsToStore}`);
-  logger.info(`  > Received AutoExecute: ${autoExecute}, Existing: ${existingChain.autoExecute}`);
-  logger.info(`  > Received LastExecuted: ${lastExecuted}, Existing: ${existingChain.lastExecuted}`);
-  logger.info(`  > Received Pinned: ${pinned}, Existing: ${existingChain.pinned}`);
+  if (fields.length === 0) {
+    logger.warn('[DB] updateChain: No updatable fields provided in data object.');
+    return { success: false, error: 'No updatable fields provided.' }; 
+  }
 
-  const finalName = name ?? existingChain.name;
-  const finalDescription = data.hasOwnProperty('description') ? description : existingChain.description;
-  const finalLayoutData = data.hasOwnProperty('layoutData') ? layoutData : existingChain.layoutData;
-  const finalAutoExecute = data.hasOwnProperty('autoExecute') && autoExecute !== undefined ? (autoExecute ? 1 : 0) : existingChain.autoExecute;
-  const finalLastExecuted = data.hasOwnProperty('lastExecuted') ? lastExecuted : existingChain.lastExecuted;
-  const finalPinned = data.hasOwnProperty('pinned') && pinned !== undefined ? (pinned ? 1 : 0) : existingChain.pinned;
-
-  logger.info(`[db.updateChain] Executing update for ID ${id} with: ` ,
-      `Name: '${finalName}', Nodes: '${nodesToStore ? nodesToStore.substring(0,50) + '...': nodesToStore}', Desc: '${finalDescription}', ` +
-      `Tags: '${tagsToStore}', Layout: '${finalLayoutData}', AutoExec: ${finalAutoExecute}, LastExec: ${finalLastExecuted}, Pinned: ${finalPinned}`
-  );
+  fields.push("updatedAt = datetime('now')"); 
+  const query = `UPDATE Chains SET ${fields.join(', ')} WHERE id = ?`;
+  params.push(id);
 
   try {
-    updateChainStmt.run(
-      finalName,
-      nodesToStore, 
-      finalDescription,
-      tagsToStore, 
-      finalLayoutData,
-      finalAutoExecute,
-      finalLastExecuted,
-      finalPinned,
-      id
-    );
-    logger.info(`[db.updateChain] Successfully updated chain ID ${id}.`);
-  } catch (error) {
-      logger.error(`[db.updateChain] Error executing updateChainStmt for ID ${id}:`, error);
-      throw error; // Re-throw to allow IPC handler to catch and respond
+    const stmt = db.prepare(query);
+    const result = stmt.run(...params);
+    if (result.changes > 0) {
+      logger.info(`[DB] Chain ${id} updated successfully.`);
+      return { success: true };
+    } else {
+      const chainExists = getChainById(id);
+      if (!chainExists) {
+          logger.warn(`[DB] No chain found with ID ${id} to update.`);
+          return { success: false, error: 'No chain found with the given ID.' };
+      }
+      logger.warn(`[DB] No changes made for chain ID ${id} during update (data might be the same).`);
+      return { success: true, error: 'Data was the same as existing; no changes made.' }; 
+    }
+  } catch (error: any) {
+    logger.error(`[DB] Error updating chain ${id}:`, error.message);
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' && data.name) {
+        return { success: false, error: `A chain with name '${data.name}' already exists.` };
+    }
+    return { success: false, error: error.message };
   }
 }
 
@@ -495,7 +723,7 @@ export function addClipboardEntry(content: string): void {
   const existingClip = getClipByContentStmt.get(content) as { id: string; pinned: number } | undefined;
   if (existingClip) {
     updateClipTimeStmt.run(Date.now(), existingClip.id);
-  } else {
+    } else {
     const newId = randomUUID();
     insertClipStmt.run(newId, content, Date.now());
     trimHistory();
@@ -544,7 +772,7 @@ export function pinClipboardItem(id: string, pinned: boolean): void {
 
 const DEFAULT_EDGE_HOVER_SETTINGS: EdgeHoverSettings = {
   enabled: true,
-  position: 'right-center',
+  position: 'left-center', // Changed to left-center to match overlay position
   triggerSize: 20,
   delay: 200,
 };
@@ -554,7 +782,7 @@ const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
   opacity: 0.95,
   blur: 5,
   y: 50, // Default Y position (e.g. percentage or initial pixel value)
-  side: 'right' // Default side
+  side: 'left' // Default side - changed to left for Starter Chains
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -594,4 +822,83 @@ export function updateSettings(newSettings: Partial<Settings>): void {
       upsertSettingStmt.run(key, JSON.stringify((newSettings as any)[key]));
     }
   }
+}
+
+export function getPinnedItems(): PinnedItem[] {
+  if (!db) throw new Error("DB not initialized for getPinnedItems");
+  logger.info('[DB] Fetching pinned items');
+  const snippetStmt = db.prepare("SELECT id, content, 'snippet' as type, isPinned FROM Snippets WHERE isPinned = 1");
+  const chainStmt = db.prepare("SELECT id, name, 'chain' as type, isPinned FROM Chains WHERE isPinned = 1");
+  
+  const pinnedSnippetsRaw = snippetStmt.all() as any[];
+  const pinnedChainsRaw = chainStmt.all() as any[];
+
+  const pinnedSnippets: PinnedItem[] = pinnedSnippetsRaw.map(s => ({
+    id: s.id,
+    type: 'snippet',
+    name: s.content.substring(0, 50) + (s.content.length > 50 ? '...' : ''),
+    content: s.content,
+    isPinned: !!s.isPinned
+  }));
+
+  const pinnedChains: PinnedItem[] = pinnedChainsRaw.map(c => ({
+    id: c.id,
+    type: 'chain',
+    name: c.name,
+    isPinned: !!c.isPinned
+  }));
+
+  return [...pinnedSnippets, ...pinnedChains];
+}
+
+export function getStarterChains(): Chain[] {
+  if (!db) throw new Error("DB not initialized for getStarterChains");
+  logger.info('[DB] Fetching starter chains');
+  const stmt = db.prepare(`SELECT ${chainFields} FROM chains WHERE isStarterChain = 1 ORDER BY name ASC`);
+  
+  return stmt.all().map((row: any) => {
+    let parsedOptions: ChainOption[] = [];
+    if (row.options) {
+      try {
+        parsedOptions = JSON.parse(row.options);
+        if (!Array.isArray(parsedOptions) || !parsedOptions.every(opt => 
+          typeof opt === 'object' && opt !== null && 
+          'id' in opt && typeof opt.id === 'string' &&
+          'title' in opt && typeof opt.title === 'string' &&
+          'body' in opt && typeof opt.body === 'string'
+        )) {
+          logger.warn(`[db.getStarterChains] Chain ID ${row.id} ('${row.name}') has malformed 'options' structure. Defaulting to empty options.`);
+          parsedOptions = [];
+        }
+      } catch (error) {
+        logger.error(`[db.getStarterChains] Failed to parse 'options' for chain ID ${row.id} ('${row.name}'):`, error);
+        parsedOptions = [];
+      }
+    }
+
+    let parsedTags: string[] = [];
+    if (row.tags) {
+      try {
+        const tempTags = JSON.parse(row.tags);
+        if (Array.isArray(tempTags) && tempTags.every(tag => typeof tag === 'string')) {
+          parsedTags = tempTags;
+        }
+      } catch (error) {
+        logger.error(`[db.getStarterChains] Failed to parse 'tags' for chain ID ${row.id} ('${row.name}'):`, error);
+      }
+    }
+
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      options: parsedOptions,
+      tags: parsedTags,
+      layoutData: row.layoutData,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      isPinned: !!row.isPinned,
+      isStarterChain: !!row.isStarterChain,
+    };
+  });
 }

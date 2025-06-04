@@ -20,6 +20,7 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState<boolean>(false);
 
   const fetchChainDetails = useCallback(async (id: number) => {
     setIsLoading(true);
@@ -33,7 +34,8 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
         setChainName(fetchedChain.name);
         setChainDescription(fetchedChain.description || '');
         setOptions(fetchedChain.options || []); // Changed from fetchedChain.nodes
-        setIsPinned(fetchedChain.pinned || false); // << SET isPinned from fetched chain
+        setIsPinned(fetchedChain.isPinned || false); // FIXED: fetchedChain.pinned to fetchedChain.isPinned
+        setInitialLoadComplete(true);
         // setChainTags(fetchedChain.tags || []);
       } else {
         throw new Error(`Chain with ID ${id} not found.`);
@@ -63,32 +65,34 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
       return;
     }
     
+    if (!initialLoadComplete) return; // Don't save if initial data hasn't loaded
+
     setIsSaving(true);
     setError(null);
     try {
       // Log arguments before sending via IPC (NEW ORDER)
-      const updateData: Partial<Omit<Chain, 'id'>> = {
+      const chainToSave: Partial<Omit<Chain, 'id'>> = {
         name: chainName.trim(),
         options: options,
         description: chainDescription.trim(),
-        pinned: isPinned,
+        isPinned: isPinned,
       };
 
       if (chain.tags) {
-        updateData.tags = chain.tags;
+        chainToSave.tags = chain.tags;
       }
       if (chain.layoutData) {
-        updateData.layoutData = chain.layoutData;
+        chainToSave.layoutData = chain.layoutData;
       }
 
       console.log(`[HybridChainEditorView] About to call window.api.updateChain with:`);
       console.log(`  ID: ${chain.id} (type: ${typeof chain.id})`);
-      console.log(`  Data:`, JSON.parse(JSON.stringify(updateData)));
+      console.log(`  Data:`, JSON.parse(JSON.stringify(chainToSave)));
 
       // Construct the updated chain data with the new options structure
       await window.api.updateChain(
         chain.id, // ID is FIRST
-        updateData
+        chainToSave
       );
       // alert('Chain saved successfully!'); // REMOVED: This can disrupt focus
       // Optionally, provide a gentler feedback mechanism here, like a temporary status message

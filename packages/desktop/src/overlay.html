@@ -2,6 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';" />
     <title>SnipFlow Overlay</title>
     <style>
       :root {
@@ -29,13 +30,15 @@
       #container {
         width: 100vw;
         height: 100vh;
+        max-height: 80vh;
         position: relative;
         padding: 0;
         margin: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
       }
       
       .floating-grid {
-        position: absolute;
         display: grid;
         grid-template-columns: repeat(2, 160px);
         gap: 12px;
@@ -44,10 +47,11 @@
         border-radius: 12px;
         border: 1px solid rgba(255,255,255,0.1);
         box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-        transform: translateX(-100%);
-        opacity: 0;
+        opacity: 1;
         transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         z-index: 1000;
+        width: 100%;
+        max-width: 360px;
       }
       
       .floating-grid.show {
@@ -169,6 +173,26 @@
         font-size: 11px;
         z-index: 2;
       }
+      
+      .grid-box.starter {
+        border-color: #f39c12;
+        background: rgba(243, 156, 18, 0.15);
+        box-shadow: 0 0 12px rgba(243, 156, 18, 0.2);
+      }
+      
+      .grid-box.starter::after {
+        content: "🚀";
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        font-size: 11px;
+        z-index: 2;
+      }
+      
+      .grid-box.starter:hover {
+        background: #f39c12;
+        box-shadow: 0 12px 24px rgba(243, 156, 18, 0.4);
+      }
       .item-title {
         font-weight: 600;
         font-size: 13px;
@@ -265,27 +289,27 @@
   </head>
   <body>
     <div id="container">
-      <!-- Pinned Favorites Grid -->
-      <div id="pinned-grid" class="floating-grid" style="top: 20px; left: 20px;">
-        <div class="grid-header">⭐ Pinned</div>
+      <!-- Starter Chains Grid -->
+      <div id="starter-grid" class="floating-grid">
+        <div class="grid-header">🚀 Starter Chains</div>
       </div>
       
       <!-- Quick Snippets Grid -->
-      <div id="snippets-grid" class="floating-grid" style="top: 120px; left: 20px;">
+      <div id="snippets-grid" class="floating-grid" style="display: none;">
         <div class="grid-header">✂️ Snippets</div>
       </div>
       
       <!-- Chains Grid -->
-      <div id="chains-grid" class="floating-grid" style="top: 220px; left: 20px;">
+      <div id="chains-grid" class="floating-grid" style="display: none;">
         <div class="grid-header">🔗 Chains</div>
       </div>
       
       <!-- Recent Clipboard Grid -->
-      <div id="history-grid" class="floating-grid" style="top: 320px; left: 20px;">
+      <div id="history-grid" class="floating-grid" style="display: none;">
         <div class="grid-header">📋 Recent</div>
       </div>
       
-      <div id="chain-runner"></div>
+      <div id="chain-runner" style="display: none;"></div>
     </div>
     
     <div id="flash">Pasted!</div>

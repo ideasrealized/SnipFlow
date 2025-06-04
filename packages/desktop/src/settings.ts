@@ -18,11 +18,11 @@ export interface Settings {
 const DIR = join(homedir(), '.snipflow');
 const FILE = join(DIR, 'settings.json');
 let settings: Settings = { 
-  overlaySide: 'right', 
+  overlaySide: 'left', 
   theme: 'dark',
   edgeHover: {
     enabled: true,
-    position: 'right-center',
+    position: 'left-center',
     triggerSize: 50,
     delay: 200
   }

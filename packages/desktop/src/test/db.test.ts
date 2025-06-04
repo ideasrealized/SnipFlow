@@ -33,15 +33,24 @@ describe('Database Tests', () => {
       { id: randomUUID(), title: 'Step 1', body: 'Hello' },
       { id: randomUUID(), title: 'Step 2 Choice', body: 'Choose A or B' }
     ];
-    const newChain = await createChain('Test Chain 1', initialOptions, 'A test chain');
+    const newChainData: Partial<Chain> = {
+      name: 'Test Chain 1',
+      options: initialOptions,
+      description: 'A test chain',
+      tags: ['test'],
+      isPinned: false
+    };
+    const newChain = await createChain(newChainData);
     assert.ok(newChain, 'Chain should be created');
-    assert.strictEqual(newChain.name, 'Test Chain 1');
-    assert.strictEqual(newChain.options.length, 2);
-    assert.strictEqual(newChain.options[0]?.title, 'Step 1');
+    assert.strictEqual(newChain!.name, 'Test Chain 1');
+    assert.strictEqual(newChain!.isPinned, false);
+    assert.ok(newChain!.options, 'Chain should have options');
+    assert.strictEqual(newChain!.options.length, 2);
+    assert.strictEqual(newChain!.options[0]?.title, 'Step 1');
 
     const chains = await getChains();
     assert.ok(chains.length > 0, 'Should retrieve chains');
-    const foundChain = chains.find((c: Chain) => c.id === newChain.id);
+    const foundChain = chains.find((c: Chain) => c.id === newChain!.id);
     assert.ok(foundChain, 'Found the created chain');
     assert.strictEqual(foundChain?.options.length, 2);
     assert.strictEqual(foundChain?.options[1]?.body, 'Choose A or B');
@@ -49,7 +58,13 @@ describe('Database Tests', () => {
 
   it('should retrieve a chain by name', async () => {
     const options: ChainOption[] = [{ id: randomUUID(), title: 'Only Option', body: 'Some content' }];
-    await createChain('Test Chain ByName', options, 'Desc');
+    const chainByNameData: Partial<Chain> = {
+      name: 'Test Chain ByName',
+      options: options,
+      description: 'Desc',
+      isPinned: false
+    };
+    await createChain(chainByNameData);
     const chain = await getChainByName('Test Chain ByName');
     assert.ok(chain, 'Chain should be found by name');
     assert.strictEqual(chain?.name, 'Test Chain ByName');
@@ -58,47 +73,78 @@ describe('Database Tests', () => {
 
   it('should retrieve a chain by ID', async () => {
     const options: ChainOption[] = [{ id: randomUUID(), title: 'ID Option', body: 'Content for ID test' }];
-    const newChain = await createChain('Test Chain ForID', options, 'Desc');
-    const chain = await getChainById(newChain.id);
+    const chainForIdData: Partial<Chain> = {
+      name: 'Test Chain ForID',
+      options: options,
+      description: 'Desc',
+      isPinned: true
+    };
+    const newChain = await createChain(chainForIdData);
+    assert.ok(newChain, 'Created chain for ID test should not be null');
+    const chain = await getChainById(newChain!.id);
     assert.ok(chain, 'Chain should be found by ID');
-    assert.strictEqual(chain?.id, newChain.id);
+    assert.strictEqual(chain?.id, newChain!.id);
+    assert.strictEqual(chain?.isPinned, true);
     assert.strictEqual(chain?.options[0]?.body, 'Content for ID test');
   });
 
   it('should update a chain', async () => {
     const initialOptions: ChainOption[] = [{ id: randomUUID(), title: 'Initial', body: 'Initial Body' }];
-    const chainToUpdate = await createChain('Chain to Update', initialOptions, 'Original Desc');
+    const chainToUpdateData: Partial<Chain> = {
+      name: 'Chain to Update',
+      options: initialOptions,
+      description: 'Original Desc',
+      isPinned: false
+    };
+    const chainToUpdate = await createChain(chainToUpdateData);
+    assert.ok(chainToUpdate, 'Created chain for update test should not be null');
     
     const updatedOptions: ChainOption[] = [
-      { id: chainToUpdate.options[0]!.id, title: 'Updated Title', body: 'Updated Body' },
+      { id: chainToUpdate!.options[0]!.id, title: 'Updated Title', body: 'Updated Body' },
       { id: randomUUID(), title: 'New Option', body: 'Extra details' }
     ];
-    await updateChain(chainToUpdate.id, { name: 'Updated Chain Name', options: updatedOptions, description: 'Updated Desc' });
+    await updateChain(chainToUpdate!.id, { name: 'Updated Chain Name', options: updatedOptions, description: 'Updated Desc', isPinned: true });
     
-    const refetchedChain = await getChainById(chainToUpdate.id);
+    const refetchedChain = await getChainById(chainToUpdate!.id);
     assert.ok(refetchedChain, 'Updated chain should be refetched');
     assert.strictEqual(refetchedChain?.name, 'Updated Chain Name');
     assert.strictEqual(refetchedChain?.options.length, 2);
     assert.strictEqual(refetchedChain?.options[0]?.title, 'Updated Title');
     assert.strictEqual(refetchedChain?.options[1]?.title, 'New Option');
     assert.strictEqual(refetchedChain?.options[0]?.body, 'Updated Body');
+    assert.strictEqual(refetchedChain?.isPinned, true);
   });
 
   it('should delete a chain', async () => {
     const options: ChainOption[] = [{ id: randomUUID(), title: 'ToDelete', body: 'Delete me' }];
-    const chainToDelete = await createChain('Chain To Delete', options, 'Desc');
-    await deleteChain(chainToDelete.id);
-    const deletedChain = await getChainById(chainToDelete.id);
+    const chainToDeleteData: Partial<Chain> = {
+      name: 'Chain To Delete',
+      options: options,
+      description: 'Desc',
+      isPinned: false
+    };
+    const chainToDelete = await createChain(chainToDeleteData);
+    assert.ok(chainToDelete, 'Created chain for delete test should not be null');
+    await deleteChain(chainToDelete!.id);
+    const deletedChain = await getChainById(chainToDelete!.id);
     assert.strictEqual(deletedChain, undefined, 'Deleted chain should not be found');
   });
 
   it('should create and retrieve snippets', async () => {
-    await createSnippet('test snippet content 1');
-    await createSnippet('another snippet 2');
+    const snippet1Data: Partial<Snippet> = { content: 'test snippet content 1', isPinned: false };
+    const snippet2Data: Partial<Snippet> = { content: 'another snippet 2', isPinned: true };
+    await createSnippet(snippet1Data);
+    await createSnippet(snippet2Data);
+
     const snippets = await getSnippets();
     assert.ok(snippets.length >= 2, 'Should find snippets');
-    assert.ok(snippets.some((s: Snippet) => s.content === 'test snippet content 1'), 'Found the first snippet');
-    assert.ok(snippets.some((s: Snippet) => s.content === 'another snippet 2'), 'Found the second snippet');
+    const snippet1 = snippets.find((s: Snippet) => s.content === 'test snippet content 1');
+    assert.ok(snippet1, 'Found the first snippet');
+    assert.strictEqual(snippet1?.isPinned, false, 'Snippet 1 should not be pinned');
+
+    const snippet2 = snippets.find((s: Snippet) => s.content === 'another snippet 2');
+    assert.ok(snippet2, 'Found the second snippet');
+    assert.strictEqual(snippet2?.isPinned, true, 'Snippet 2 should be pinned');
   });
 
   it('should get and update settings', async () => {

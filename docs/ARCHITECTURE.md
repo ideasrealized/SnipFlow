@@ -43,78 +43,119 @@ snipflow/
 - Smooth animations
 - Multi-monitor aware
 
-### 3. **Snippet Engine**
+### 3. **Snippet Engine** (Current Implementation)
 ```typescript
 interface Snippet {
-  id: string;
-  title: string;
+  id: number;
   content: string;
-  category?: string;
-  tags?: string[];
-  usage_count: number;
-  chain_links?: string[];
+  createdAt: string;
+  updatedAt: string;
+  isPinned: boolean;
 }
 ```
 
-### 4. **Chain System** (In Development)
+### 4. **Chain System** (Implemented)
 ```typescript
 interface Chain {
-  id: string;
+  id: number;
   name: string;
-  nodes: ChainNode[];
-  execution_mode: 'instant' | 'flow' | 'interactive';
+  description?: string;
+  options: ChainOption[];
+  tags: string[];
+  layoutData?: string;
+  createdAt: string;
+  updatedAt: string;
+  isPinned: boolean;
+  autoExecute?: boolean;
+  lastExecuted?: number;
 }
 
-interface ChainNode {
-  type: 'text' | 'choice' | 'input' | 'variable';
-  content: string;
-  next?: string | string[];
+interface ChainOption {
+  id: string;
+  title: string;
+  body: string;
+  type?: 'text' | 'choice' | 'input' | 'variable';
 }
 ```
 
-### 5. **Database Schema**
+### 5. **Clipboard Management** (Implemented)
+```typescript
+interface ClipboardEntry {
+  id: string;
+  content: string;
+  timestamp: number;
+  pinned: number;
+}
+```
+
+### 5. **Database Schema** (Current Implementation)
 ```sql
 -- Snippets table
 CREATE TABLE snippets (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   content TEXT NOT NULL,
-  category TEXT,
-  usage_count INTEGER DEFAULT 0,
-  created_at DATETIME,
-  updated_at DATETIME
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  isPinned BOOLEAN DEFAULT 0
 );
 
--- Chains table (planned)
+-- Chains table (implemented)
 CREATE TABLE chains (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  nodes JSON NOT NULL,
-  usage_count INTEGER DEFAULT 0
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  options TEXT, -- JSON string for chain nodes/options
+  tags TEXT, -- JSON string for tags array
+  layoutData TEXT, -- JSON for layout (e.g. mind map positions)
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  isPinned BOOLEAN DEFAULT 0,
+  autoExecute INTEGER DEFAULT 0,
+  lastExecuted INTEGER
 );
 
--- Clipboard history (planned)
+-- Clipboard history (implemented)
 CREATE TABLE clipboard_history (
   id TEXT PRIMARY KEY,
   content TEXT NOT NULL,
-  type TEXT,
-  timestamp DATETIME,
-  pinned BOOLEAN DEFAULT 0
+  timestamp INTEGER NOT NULL,
+  pinned INTEGER DEFAULT 0
+);
+
+-- Settings table (implemented)
+CREATE TABLE settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
 );
 ```
 
-## IPC Communication
+## IPC Communication (Current Implementation)
 
 ### Secure Channel Design
 ```typescript
-// Main process exposes limited API
-ipcMain.handle('snippet:create', async (_, snippet) => {
-  return await snippetService.create(snippet);
+// Main process exposes limited API (20+ handlers implemented)
+ipcMain.handle('get-snippets', async () => {
+  return getSnippets();
 });
 
-// Renderer uses through preload
+ipcMain.handle('create-snippet', async (_, snippetData) => {
+  return createSnippet(snippetData);
+});
+
+ipcMain.handle('get-chains', async () => {
+  return getChains();
+});
+
+ipcMain.handle('get-clipboard-history', async (_, limit) => {
+  return getClipboardHistory(limit);
+});
+
+// Renderer uses through preload (contextBridge)
 const api = {
-  createSnippet: (snippet) => ipcRenderer.invoke('snippet:create', snippet)
+  getSnippets: () => ipcRenderer.invoke('get-snippets'),
+  createSnippet: (snippet) => ipcRenderer.invoke('create-snippet', snippet),
+  getChains: () => ipcRenderer.invoke('get-chains'),
+  getClipboardHistory: (limit) => ipcRenderer.invoke('get-clipboard-history', limit)
 };
 ```
 
@@ -125,13 +166,20 @@ const api = {
 3. **Memory Efficient**: Lazy load UI components
 4. **Native Speed**: Rust modules for heavy computation
 
-## Security Model
+## Security Model (Current Implementation)
 
 1. **Context Isolation**: Enabled in all renderer processes
 2. **Node Integration**: Disabled in renderers
-3. **Content Security Policy**: Strict CSP headers
+3. **Content Security Policy**: Implemented with strict CSP headers
+   - `default-src 'self'`
+   - `script-src 'self' 'unsafe-inline'`
+   - `style-src 'self' 'unsafe-inline'`
+   - `img-src 'self' data:`
+   - `font-src 'self'`
 4. **Input Validation**: All user inputs sanitized
 5. **Local First**: No cloud dependency for core features
+6. **Database Security**: SQLite with transaction-based migrations
+7. **IPC Security**: Secure message passing with type validation
 
 ## Future Architecture
 
