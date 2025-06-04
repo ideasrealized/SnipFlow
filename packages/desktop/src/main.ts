@@ -366,9 +366,9 @@ function setupIpcHandlers() {
     }
   });
 
-  ipcMain.handle('create-chain', async (_, name:string, opts:ChainOption[], desc?:string, tags?:string[], layout?:string, pinned?:boolean) => {
+  ipcMain.handle('create-chain', async (_, name:string, opts:ChainOption[], desc?:string, tags?:string[], layout?:string, pinned?:boolean, isStarterChain?:boolean) => {
     try {
-      const newChain = dbCreateChain(name, opts, desc, tags, layout, pinned);
+      const newChain = dbCreateChain(name, opts, desc, tags, layout, pinned, isStarterChain);
       return newChain;
     } catch (e: any) {
       logger.error('IPC create-chain failed:', e);

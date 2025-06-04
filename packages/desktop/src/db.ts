@@ -117,6 +117,11 @@ function createTables() {
       db.exec('ALTER TABLE chains ADD COLUMN pinned INTEGER DEFAULT 0');
       logger.info("[db.createTables] Column 'pinned' added to 'chains' table.");
     }
+    const hasIsStarterChain = chainsTableInfo.some(col => col.name === 'isStarterChain');
+    if (!hasIsStarterChain) {
+      db.exec('ALTER TABLE chains ADD COLUMN isStarterChain INTEGER DEFAULT 0');
+      logger.info("[db.createTables] Column 'isStarterChain' added to 'chains' table.");
+    }
   } catch (error) {
     logger.error("[db.createTables] Error during chains table migration for new columns:", error);
   }
@@ -171,16 +176,16 @@ function prepareStatements() {
   updateSnippetStmt = db.prepare('UPDATE snippets SET content = ? WHERE id = ?');
   deleteSnippetStmt = db.prepare('DELETE FROM snippets WHERE id = ?');
 
-  const chainFields = 'id, name, nodes, description, tags, layoutData, autoExecute, lastExecuted, pinned';
+  const chainFields = 'id, name, nodes, description, tags, layoutData, autoExecute, lastExecuted, pinned, isStarterChain';
   getChainsStmt = db.prepare(`SELECT ${chainFields} FROM chains ORDER BY name ASC`);
   getChainByNameStmt = db.prepare(`SELECT ${chainFields} FROM chains WHERE name = ?`);
   getChainByIdStmt = db.prepare(`SELECT ${chainFields} FROM chains WHERE id = ?`);
-  // Ensure the number of ? matches the columns, including pinned
+  // Ensure the number of ? matches the columns, including pinned and isStarterChain
   insertChainStmt = db.prepare(
-    'INSERT INTO chains (name, nodes, description, tags, layoutData, autoExecute, lastExecuted, pinned) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO chains (name, nodes, description, tags, layoutData, autoExecute, lastExecuted, pinned, isStarterChain) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
   updateChainStmt = db.prepare(
-    'UPDATE chains SET name = ?, nodes = ?, description = ?, tags = ?, layoutData = ?, autoExecute = ?, lastExecuted = ?, pinned = ? WHERE id = ?'
+    'UPDATE chains SET name = ?, nodes = ?, description = ?, tags = ?, layoutData = ?, autoExecute = ?, lastExecuted = ?, pinned = ?, isStarterChain = ? WHERE id = ?'
   );
   deleteChainStmt = db.prepare('DELETE FROM chains WHERE id = ?');
   insertClipStmt = db.prepare('INSERT INTO clipboard_history(id, content, timestamp) VALUES (?, ?, ?)');
@@ -253,7 +258,8 @@ export function getChains(): Chain[] {
         layoutData: row.layoutData,
         autoExecute: !!row.autoExecute, // Convert 0/1 to boolean
         lastExecuted: row.lastExecuted,
-        pinned: !!row.pinned
+        pinned: !!row.pinned,
+        isStarterChain: !!row.isStarterChain
       };
     })
   );
@@ -305,7 +311,8 @@ export function getChainByName(name: string): Chain | undefined {
     layoutData: row.layoutData,
     autoExecute: !!row.autoExecute, // Convert 0/1 to boolean
     lastExecuted: row.lastExecuted,
-    pinned: !!row.pinned
+    pinned: !!row.pinned,
+    isStarterChain: !!row.isStarterChain
   };
 }
 
@@ -355,7 +362,8 @@ export function getChainById(id: number): Chain | undefined {
     layoutData: row.layoutData,
     autoExecute: !!row.autoExecute, // Convert 0/1 to boolean
     lastExecuted: row.lastExecuted,
-    pinned: !!row.pinned
+    pinned: !!row.pinned,
+    isStarterChain: !!row.isStarterChain
   };
 }
 
@@ -365,7 +373,8 @@ export function createChain(
   description?: string | null,
   tags?: string[] | null,
   layoutData?: string | null,
-  pinned?: boolean
+  pinned?: boolean,
+  isStarterChain?: boolean
 ): Chain {
   if (!db) throw new Error("DB not initialized for createChain");
   const nodesString = JSON.stringify(options || []);
@@ -373,12 +382,13 @@ export function createChain(
   const autoExecuteValue = 0;
   const lastExecutedValue = null;
   const pinnedValue = pinned ? 1 : 0;
+  const isStarterChainValue = isStarterChain ? 1 : 0;
 
   logger.info(
     `[db.createChain] Attempting to create chain. Name: '${name}', ` +
     `Options: ${nodesString ? nodesString.substring(0,100) + '...' : nodesString}, Desc: '${description}', ` +
     `Tags: ${tagsString}, Layout: '${layoutData}', ` +
-    `AutoExec: ${autoExecuteValue}, LastExec: ${lastExecutedValue}, Pinned: ${pinnedValue}`
+    `AutoExec: ${autoExecuteValue}, LastExec: ${lastExecutedValue}, Pinned: ${pinnedValue}, IsStarterChain: ${isStarterChainValue}`
   );
 
   try {
@@ -390,7 +400,8 @@ export function createChain(
       layoutData,
       autoExecuteValue,
       lastExecutedValue,
-      pinnedValue
+      pinnedValue,
+      isStarterChainValue
     );
     const newChainId = result.lastInsertRowid as number;
     logger.info(`[db.createChain] Successfully created chain ID ${newChainId} with name '${name}'.`);
@@ -430,6 +441,7 @@ export function updateChain(
   const autoExecute = data.autoExecute;
   const lastExecuted = data.lastExecuted;
   const pinned = data.pinned;
+  const isStarterChain = data.isStarterChain;
 
   const nodesToStore = data.hasOwnProperty('options') && options !== undefined 
     ? JSON.stringify(options) 
@@ -453,6 +465,7 @@ export function updateChain(
   logger.info(`  > Received AutoExecute: ${autoExecute}, Existing: ${existingChain.autoExecute}`);
   logger.info(`  > Received LastExecuted: ${lastExecuted}, Existing: ${existingChain.lastExecuted}`);
   logger.info(`  > Received Pinned: ${pinned}, Existing: ${existingChain.pinned}`);
+  logger.info(`  > Received IsStarterChain: ${isStarterChain}, Existing: ${existingChain.isStarterChain}`);
 
   const finalName = name ?? existingChain.name;
   const finalDescription = data.hasOwnProperty('description') ? description : existingChain.description;
@@ -460,10 +473,11 @@ export function updateChain(
   const finalAutoExecute = data.hasOwnProperty('autoExecute') && autoExecute !== undefined ? (autoExecute ? 1 : 0) : existingChain.autoExecute;
   const finalLastExecuted = data.hasOwnProperty('lastExecuted') ? lastExecuted : existingChain.lastExecuted;
   const finalPinned = data.hasOwnProperty('pinned') && pinned !== undefined ? (pinned ? 1 : 0) : existingChain.pinned;
+  const finalIsStarterChain = data.hasOwnProperty('isStarterChain') && isStarterChain !== undefined ? (isStarterChain ? 1 : 0) : existingChain.isStarterChain;
 
   logger.info(`[db.updateChain] Executing update for ID ${id} with: ` ,
       `Name: '${finalName}', Nodes: '${nodesToStore ? nodesToStore.substring(0,50) + '...': nodesToStore}', Desc: '${finalDescription}', ` +
-      `Tags: '${tagsToStore}', Layout: '${finalLayoutData}', AutoExec: ${finalAutoExecute}, LastExec: ${finalLastExecuted}, Pinned: ${finalPinned}`
+      `Tags: '${tagsToStore}', Layout: '${finalLayoutData}', AutoExec: ${finalAutoExecute}, LastExec: ${finalLastExecuted}, Pinned: ${finalPinned}, IsStarterChain: ${finalIsStarterChain}`
   );
 
   try {
@@ -476,6 +490,7 @@ export function updateChain(
       finalAutoExecute,
       finalLastExecuted,
       finalPinned,
+      finalIsStarterChain,
       id
     );
     logger.info(`[db.updateChain] Successfully updated chain ID ${id}.`);

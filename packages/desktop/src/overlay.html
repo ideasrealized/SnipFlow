@@ -169,6 +169,16 @@
         font-size: 11px;
         z-index: 2;
       }
+      
+      .grid-box.starter-chain::before {
+        content: "⚡";
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        font-size: 11px;
+        z-index: 2;
+        color: #f39c12;
+      }
       .item-title {
         font-weight: 600;
         font-size: 13px;
@@ -260,6 +270,57 @@
       #toggle-theme:hover {
         opacity: 1;
         background: var(--hover);
+      }
+      
+      /* Context Menu Styles */
+      .context-menu {
+        position: fixed;
+        background: var(--bg);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        backdrop-filter: blur(12px);
+        padding: 4px;
+        z-index: 2147483648;
+        opacity: 0;
+        transform: scale(0.9);
+        transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+        pointer-events: none;
+        min-width: 160px;
+      }
+      
+      .context-menu.show {
+        opacity: 1;
+        transform: scale(1);
+        pointer-events: auto;
+      }
+      
+      .context-menu-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 13px;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text);
+      }
+      
+      .context-menu-item:hover {
+        background: var(--hover);
+        color: var(--accent);
+      }
+      
+      .context-menu-item.destructive:hover {
+        background: rgba(231, 76, 60, 0.2);
+        color: #e74c3c;
+      }
+      
+      .context-menu-separator {
+        height: 1px;
+        background: rgba(255,255,255,0.1);
+        margin: 4px 0;
       }
     </style>
   </head>

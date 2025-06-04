@@ -23,7 +23,8 @@ export interface SnippetApi {
     description?: string | null, 
     tags?: string[] | null, 
     layoutData?: string | null, 
-    pinned?: boolean
+    pinned?: boolean,
+    isStarterChain?: boolean
   ) => Promise<Chain | null>;
   updateChain: (id: number, data: Partial<Omit<Chain, 'id'>>) => Promise<{success: boolean; error?: string}>;
   deleteChain: (id: number) => Promise<void>;
@@ -70,6 +71,7 @@ export interface Chain {
   autoExecute?: boolean;
   lastExecuted?: number | null;
   pinned?: boolean;
+  isStarterChain?: boolean;
 }
 
 export interface ClipboardEntry {

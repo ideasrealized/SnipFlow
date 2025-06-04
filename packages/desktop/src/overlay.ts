@@ -37,6 +37,10 @@ let clips: {
 }[] = [];
 let currentTheme: 'light' | 'dark' | 'system' = 'dark';
 
+// Context menu state
+let currentContextMenu: HTMLElement | null = null;
+let contextMenuChain: Chain | null = null;
+
 // For now, let's assume a simple global logger object for overlay context
 // This logger definition should ideally be at the top of the file or handled via preload.
 const logger = {
@@ -95,7 +99,7 @@ function renderAll(filter = '') {
   renderHistory(filter);
 }
 
-function createGridBox(title: string, preview: string, className = '', onClick: () => void) {
+function createGridBox(title: string, preview: string, className = '', onClick: () => void, onRightClick?: (event: MouseEvent) => void) {
   const box = document.createElement('div');
   box.className = `grid-box ${className}`;
   
@@ -110,6 +114,11 @@ function createGridBox(title: string, preview: string, className = '', onClick: 
   box.appendChild(titleEl);
   box.appendChild(previewEl);
   box.addEventListener('click', onClick);
+  
+  // Add right-click support for context menu
+  if (onRightClick) {
+    box.addEventListener('contextmenu', onRightClick);
+  }
   
   return box;
 }
@@ -140,7 +149,11 @@ function renderPinnedItems(filter = '') {
       }
       logger.info(`[overlay.ts] Pinned Item Data - ID: ${chain.id}, Name: ${chain.name}, Title: '${title}', Preview: '${previewText}'`);
       
-      const box = createGridBox(title, previewText, 'chain pinned', () => handleChainSelect(chain));
+      const baseClasses = 'chain pinned';
+      const starterClass = chain.isStarterChain ? ' starter-chain' : '';
+      const chainClasses = baseClasses + starterClass;
+      
+      const box = createGridBox(title, previewText, chainClasses, () => handleChainSelect(chain), (event) => showChainContextMenu(event, chain));
       logger.info('[overlay.ts] Created box for pinned item:', box ? 'Valid box' : 'Box creation FAILED');
 
       if (box) { // Apply debug styles if box is valid
@@ -161,7 +174,7 @@ function renderPinnedItems(filter = '') {
   grid.style.display = 'grid'; 
   
   if (pinnedChains.length === 0) {
-    const emptyBox = createGridBox('No Pinned Items', 'Pin chains to see them here', 'empty-state', () => {});
+    const emptyBox = createGridBox('No Pinned Items', 'Pin chains to see them here', 'empty-state', () => {}, (event) => showChainContextMenu(event, null));
     emptyBox.style.opacity = '0.7';
     emptyBox.style.cursor = 'default';
     grid.appendChild(emptyBox);
@@ -178,14 +191,14 @@ function renderSnippets(filter = '') {
   filteredSnippets.slice(0, 3).forEach(snippet => {
     const title = snippet.content.slice(0, 20) + (snippet.content.length > 20 ? '...' : '');
     const preview = snippet.content.slice(0, 40);
-    const box = createGridBox(title, preview, '', () => handleSnippetSelect(snippet));
+    const box = createGridBox(title, preview, '', () => handleSnippetSelect(snippet), (event) => showChainContextMenu(event, null));
     snippetsGrid.appendChild(box);
   });
   
   snippetsGrid.style.display = 'grid';
   
   if (filteredSnippets.length === 0) {
-    const emptyBox = createGridBox('No snippets yet', 'Add some snippets in the main window', '', () => {});
+    const emptyBox = createGridBox('No snippets yet', 'Add some snippets in the main window', '', () => {}, (event) => showChainContextMenu(event, null));
     emptyBox.style.opacity = '0.5';
     emptyBox.style.cursor = 'default';
     snippetsGrid.appendChild(emptyBox);
@@ -217,7 +230,11 @@ function renderChains(filter = '') {
           previewText = chain.options[0].body.substring(0,40) + (chain.options[0].body.length > 40 ? "..." : "");
         }
       }
-      const box = createGridBox(title, previewText, 'chain', () => handleChainSelect(chain));
+      const baseClasses = 'chain';
+      const starterClass = chain.isStarterChain ? ' starter-chain' : '';
+      const chainClasses = baseClasses + starterClass;
+      
+      const box = createGridBox(title, previewText, chainClasses, () => handleChainSelect(chain), (event) => showChainContextMenu(event, chain));
       grid.appendChild(box);
     });
   }
@@ -225,7 +242,7 @@ function renderChains(filter = '') {
   grid.style.display = 'grid';
 
   if (nonPinnedChains.length === 0) {
-    const emptyBox = createGridBox('No other chains', 'Create more chains or pin existing ones.', 'empty-state', () => {});
+    const emptyBox = createGridBox('No other chains', 'Create more chains or pin existing ones.', 'empty-state', () => {}, (event) => showChainContextMenu(event, null));
     emptyBox.style.opacity = '0.7';
     emptyBox.style.cursor = 'default';
     grid.appendChild(emptyBox);
@@ -244,14 +261,14 @@ function renderHistory(filter = '') {
   filteredClips.forEach(clip => {
     const title = clip.content.slice(0, 20) + (clip.content.length > 20 ? '...' : '');
     const preview = new Date(clip.timestamp).toLocaleTimeString();
-    const box = createGridBox(title, preview, '', () => handleClipSelect(clip.content));
+    const box = createGridBox(title, preview, '', () => handleClipSelect(clip.content), (event) => showChainContextMenu(event, null));
     historyGrid.appendChild(box);
   });
   
   historyGrid.style.display = 'grid';
   
   if (filteredClips.length === 0) {
-    const emptyBox = createGridBox('No recent items', 'Copy some text to see clipboard history', '', () => {});
+    const emptyBox = createGridBox('No recent items', 'Copy some text to see clipboard history', '', () => {}, (event) => showChainContextMenu(event, null));
     emptyBox.style.opacity = '0.5';
     emptyBox.style.cursor = 'default';
     historyGrid.appendChild(emptyBox);
@@ -363,7 +380,15 @@ function handleClipSelect(text: string) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    hideContextMenu(); // Hide context menu first
     api.hideOverlay?.();
+  }
+});
+
+// Global click listener to hide context menu when clicking outside
+document.addEventListener('click', (e) => {
+  if (currentContextMenu && !currentContextMenu.contains(e.target as Node)) {
+    hideContextMenu();
   }
 });
 
@@ -460,6 +485,176 @@ function hideFloatingGrids() {
   grids.forEach(grid => {
     grid.classList.remove('show');
   });
+}
+
+// Context Menu Functions
+function showChainContextMenu(event: MouseEvent, chain: Chain | null) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  // Only show context menu for actual chains
+  if (!chain) {
+    return;
+  }
+  
+  const startTime = performance.now();
+  logger.perf('[overlay.ts] showChainContextMenu start');
+  
+  hideContextMenu(); // Hide any existing menu
+  
+  const contextMenu = document.createElement('div');
+  contextMenu.className = 'context-menu';
+  
+  const menuItems = [
+    { icon: '✏️', text: 'Edit Chain', action: () => handleEditChain(chain) },
+    { icon: '📋', text: 'Duplicate', action: () => handleDuplicateChain(chain) },
+    { icon: '⭐', text: chain.isStarterChain ? 'Remove from Starters' : 'Convert to Starter Chain', action: () => handleToggleStarterChain(chain) },
+    { separator: true },
+    { icon: '🗑️', text: 'Delete', action: () => handleDeleteChain(chain), destructive: true }
+  ];
+  
+  menuItems.forEach(item => {
+    if (item.separator) {
+      const separator = document.createElement('div');
+      separator.className = 'context-menu-separator';
+      contextMenu.appendChild(separator);
+    } else {
+      const menuItem = document.createElement('div');
+      menuItem.className = `context-menu-item ${item.destructive ? 'destructive' : ''}`;
+      menuItem.innerHTML = `${item.icon} ${item.text}`;
+      menuItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        item.action();
+        hideContextMenu();
+      });
+      contextMenu.appendChild(menuItem);
+    }
+  });
+  
+  document.body.appendChild(contextMenu);
+  currentContextMenu = contextMenu;
+  contextMenuChain = chain;
+  
+  // Position the menu ensuring it stays within screen bounds
+  const rect = container.getBoundingClientRect();
+  const menuWidth = 160;
+  const menuHeight = contextMenu.offsetHeight || 200; // Estimate if not available
+  
+  let x = event.clientX;
+  let y = event.clientY;
+  
+  // Check right edge
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth - 10;
+  }
+  
+  // Check bottom edge
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight - 10;
+  }
+  
+  // Check left edge
+  if (x < 10) {
+    x = 10;
+  }
+  
+  // Check top edge
+  if (y < 10) {
+    y = 10;
+  }
+  
+  contextMenu.style.left = `${x}px`;
+  contextMenu.style.top = `${y}px`;
+  
+  // Show with animation
+  requestAnimationFrame(() => {
+    contextMenu.classList.add('show');
+  });
+  
+  const endTime = performance.now();
+  logger.perf(`[overlay.ts] showChainContextMenu completed in ${endTime - startTime}ms`);
+}
+
+function hideContextMenu() {
+  if (currentContextMenu) {
+    currentContextMenu.classList.remove('show');
+    setTimeout(() => {
+      if (currentContextMenu && currentContextMenu.parentNode) {
+        currentContextMenu.parentNode.removeChild(currentContextMenu);
+      }
+      currentContextMenu = null;
+      contextMenuChain = null;
+    }, 150);
+  }
+}
+
+// Context Menu Action Handlers
+async function handleEditChain(chain: Chain | null) {
+  if (!chain) return;
+  logger.info('[overlay.ts] Edit chain requested:', chain.name);
+  // TODO: Implement inline editing - Priority 3
+  // For now, just log the action
+  showFlash();
+}
+
+async function handleDuplicateChain(chain: Chain | null) {
+  if (!chain) return;
+  logger.info('[overlay.ts] Duplicate chain requested:', chain.name);
+  try {
+    const duplicatedName = `${chain.name} (Copy)`;
+    // Create a duplicate with the same options but different name
+    if (api && api.invoke) {
+      await api.invoke('create-chain', duplicatedName, chain.options, chain.description, chain.tags, chain.layoutData, false, false);
+      logger.info('[overlay.ts] Chain duplicated successfully');
+      // Reload data to show the new chain
+      await loadData();
+      showFlash();
+    } else {
+      logger.error('[overlay.ts] API not available for chain duplication');
+    }
+  } catch (error) {
+    logger.error('[overlay.ts] Error duplicating chain:', error);
+  }
+}
+
+async function handleToggleStarterChain(chain: Chain | null) {
+  if (!chain) return;
+  logger.info('[overlay.ts] Toggle starter chain requested:', chain.name, 'Current:', chain.isStarterChain);
+  try {
+    const newStarterStatus = !chain.isStarterChain;
+    if (api && api.invoke) {
+      await api.invoke('update-chain', chain.id, { isStarterChain: newStarterStatus });
+      logger.info('[overlay.ts] Chain starter status updated successfully');
+      // Reload data to reflect the change
+      await loadData();
+      showFlash();
+    } else {
+      logger.error('[overlay.ts] API not available for chain update');
+    }
+  } catch (error) {
+    logger.error('[overlay.ts] Error updating chain starter status:', error);
+  }
+}
+
+async function handleDeleteChain(chain: Chain | null) {
+  if (!chain) return;
+  logger.info('[overlay.ts] Delete chain requested:', chain.name);
+  // Add confirmation to prevent accidental deletion
+  if (confirm(`Are you sure you want to delete "${chain.name}"? This action cannot be undone.`)) {
+    try {
+      if (api && api.invoke) {
+        await api.invoke('delete-chain', chain.id);
+        logger.info('[overlay.ts] Chain deleted successfully');
+        // Reload data to remove the deleted chain
+        await loadData();
+        showFlash();
+      } else {
+        logger.error('[overlay.ts] API not available for chain deletion');
+      }
+    } catch (error) {
+      logger.error('[overlay.ts] Error deleting chain:', error);
+    }
+  }
 }
 
 initSettings();
