@@ -17,10 +17,10 @@ describe('Clipboard History Tests', () => {
 
   beforeEach(() => {
     // Clear history before each test (only unpinned items)
-    db.clearClipboardHistory(); 
+    db.clearClipboardHistory();
     // Add some pinned items to ensure they are not cleared by default clearClipboardHistory
-    const pinnedId = "pinned-test-id";
-    db.addClipboardEntry("pinned content"); // addClip uses random ID
+    const pinnedId = 'pinned-test-id';
+    db.addClipboardEntry('pinned content'); // addClip uses random ID
     // How to get the ID to pin? For now, assume addClip returns it or we can fetch it.
     // Let's assume we need a way to get the last inserted ID or fetch by content to pin.
     // Or, add a test-specific pin function if main logic is too complex for test setup.
@@ -51,7 +51,11 @@ describe('Clipboard History Tests', () => {
     // For now, this test only confirms unpinned are cleared.
     db.clearClipboardHistory();
     const history = db.getClipboardHistory(5);
-    assert.strictEqual(history.length, 0, "Unpinned history should be empty after clear");
+    assert.strictEqual(
+      history.length,
+      0,
+      'Unpinned history should be empty after clear'
+    );
   });
 
   // More tests could be added for pinning/unpinning if db provides suitable methods

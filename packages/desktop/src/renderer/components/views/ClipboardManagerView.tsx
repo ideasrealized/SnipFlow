@@ -2,26 +2,51 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { ClipboardEntry } from '../../../types'; // Assuming types are correctly pathed
 
 // Basic styling - consider moving to a CSS file or using a styling library
-const viewStyle: React.CSSProperties = { padding: '20px', fontFamily: 'Arial, sans-serif' };
-const listStyle: React.CSSProperties = { listStyleType: 'none', padding: 0 };
-const listItemStyle: React.CSSProperties = { 
-  display: 'flex', 
-  justifyContent: 'space-between', 
-  alignItems: 'center', 
-  padding: '10px', 
-  border: '1px solid #ddd', 
-  marginBottom: '10px', 
-  borderRadius: '4px' 
+const viewStyle: React.CSSProperties = {
+  padding: '20px',
+  fontFamily: 'Arial, sans-serif',
 };
-const itemContentStyle: React.CSSProperties = { flexGrow: 1, marginRight: '10px' };
-const itemTimestampStyle: React.CSSProperties = { fontSize: '0.8em', color: '#666', marginRight: '10px' };
+const listStyle: React.CSSProperties = { listStyleType: 'none', padding: 0 };
+const listItemStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '10px',
+  border: '1px solid #ddd',
+  marginBottom: '10px',
+  borderRadius: '4px',
+};
+const itemContentStyle: React.CSSProperties = {
+  flexGrow: 1,
+  marginRight: '10px',
+};
+const itemTimestampStyle: React.CSSProperties = {
+  fontSize: '0.8em',
+  color: '#666',
+  marginRight: '10px',
+};
 const actionsStyle: React.CSSProperties = { display: 'flex', gap: '5px' };
-const buttonStyle: React.CSSProperties = { padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer' };
-const primaryButtonStyle: React.CSSProperties = { ...buttonStyle, backgroundColor: '#4a90e2', color: 'white' };
-const secondaryButtonStyle: React.CSSProperties = { ...buttonStyle, backgroundColor: '#6c757d', color: 'white' };
+const buttonStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  border: 'none',
+  borderRadius: '4px',
+  cursor: 'pointer',
+};
+const primaryButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  backgroundColor: '#4a90e2',
+  color: 'white',
+};
+const secondaryButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  backgroundColor: '#6c757d',
+  color: 'white',
+};
 
 const ClipboardManagerView: React.FC = () => {
-  const [clipboardHistory, setClipboardHistory] = useState<ClipboardEntry[]>([]);
+  const [clipboardHistory, setClipboardHistory] = useState<ClipboardEntry[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +58,9 @@ const ClipboardManagerView: React.FC = () => {
       setClipboardHistory(history || []);
     } catch (err: any) {
       console.error('Error fetching clipboard history:', err);
-      setError(`Failed to fetch clipboard history: ${err.message || 'Unknown error'}`);
+      setError(
+        `Failed to fetch clipboard history: ${err.message || 'Unknown error'}`
+      );
       setClipboardHistory([]);
     } finally {
       setIsLoading(false);
@@ -98,7 +125,13 @@ const ClipboardManagerView: React.FC = () => {
     return (
       <div className="view-container">
         <p className="empty-state-message">Error: {error}</p>
-        <button className="button button-primary" onClick={() => { setError(null); fetchClipboardHistory();}}>
+        <button
+          className="button button-primary"
+          onClick={() => {
+            setError(null);
+            fetchClipboardHistory();
+          }}
+        >
           Try Again
         </button>
       </div>
@@ -112,20 +145,37 @@ const ClipboardManagerView: React.FC = () => {
         <p className="empty-state-message">Clipboard history is empty.</p>
       )}
       <ul className="item-list">
-        {clipboardHistory.map((item) => (
+        {clipboardHistory.map(item => (
           <li key={item.id} className="item-list-item">
             <span className="item-content">{item.content}</span>
-            <span className="item-timestamp">{new Date(item.timestamp).toLocaleString()}</span>
+            <span className="item-timestamp">
+              {new Date(item.timestamp).toLocaleString()}
+            </span>
             <div className="item-actions">
-              <button className="button button-secondary" onClick={() => handleCopy(item.content)}>Copy</button>
-              <button className="button button-secondary" onClick={() => handlePaste(item.content)}>Paste</button>
-              <button 
-                className={`button ${item.pinned ? 'button-primary' : 'button-secondary'}`} 
+              <button
+                className="button button-secondary"
+                onClick={() => handleCopy(item.content)}
+              >
+                Copy
+              </button>
+              <button
+                className="button button-secondary"
+                onClick={() => handlePaste(item.content)}
+              >
+                Paste
+              </button>
+              <button
+                className={`button ${item.pinned ? 'button-primary' : 'button-secondary'}`}
                 onClick={() => handlePinToggle(item)}
               >
                 {item.pinned ? 'Unpin' : 'Pin'}
               </button>
-              <button className="button button-secondary" onClick={() => handleAddAsSnippet(item.content)}>Add as Snippet</button>
+              <button
+                className="button button-secondary"
+                onClick={() => handleAddAsSnippet(item.content)}
+              >
+                Add as Snippet
+              </button>
             </div>
           </li>
         ))}
@@ -134,4 +184,4 @@ const ClipboardManagerView: React.FC = () => {
   );
 };
 
-export default ClipboardManagerView; 
+export default ClipboardManagerView;

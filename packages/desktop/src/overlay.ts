@@ -4,7 +4,10 @@ import { processTextWithChain } from './services/chainService';
 // Type definition for the extended API including generic IPC handlers
 interface ExtendedOverlayApi {
   send: (channel: string, ...args: any[]) => void;
-  on: (channel: string, listener: (...args: any[]) => void) => (() => void) | undefined;
+  on: (
+    channel: string,
+    listener: (...args: any[]) => void
+  ) => (() => void) | undefined;
   invoke: (channel: string, ...args: any[]) => Promise<any>;
   getSettings: () => Promise<any>; // Assuming Settings type is complex
   getClipboardHistory: () => Promise<any[]>; // Assuming Clip type is complex
@@ -40,10 +43,10 @@ let currentTheme: 'light' | 'dark' | 'system' = 'dark';
 // For now, let's assume a simple global logger object for overlay context
 // This logger definition should ideally be at the top of the file or handled via preload.
 const logger = {
-    info: (...args: any[]) => console.log('[Overlay INFO]', ...args),
-    warn: (...args: any[]) => console.warn('[Overlay WARN]', ...args),
-    error: (...args: any[]) => console.error('[Overlay ERROR]', ...args),
-    perf: (...args: any[]) => console.log('[Overlay PERF]', ...args), 
+  info: (...args: any[]) => console.log('[Overlay INFO]', ...args),
+  warn: (...args: any[]) => console.warn('[Overlay WARN]', ...args),
+  error: (...args: any[]) => console.error('[Overlay ERROR]', ...args),
+  perf: (...args: any[]) => console.log('[Overlay PERF]', ...args),
 };
 
 async function initSettings() {
@@ -55,28 +58,36 @@ async function initSettings() {
     document.body.classList.remove('light');
     currentTheme = 'dark';
   }
-  
+
   // No status indicator needed in floating grid design
 }
 
 async function loadData() {
   try {
     clips = await api.getClipboardHistory();
-    
+
     try {
       chains = await api.listChains(); // This should now include the 'pinned' status
-      logger.info('[overlay.ts] Chains loaded:', chains ? chains.length : 0, 'chains. Pinned example:', chains?.find(c => c.pinned));
-    } catch (e) { 
+      logger.info(
+        '[overlay.ts] Chains loaded:',
+        chains ? chains.length : 0,
+        'chains. Pinned example:',
+        chains?.find(c => c.pinned)
+      );
+    } catch (e) {
       logger.warn('[overlay.ts] Could not load chains:', e);
-      chains = []; 
+      chains = [];
     }
-    
+
     // Fetch traditional snippets if still used/needed by a grid
     try {
       // Ensure this API (window.api.list) is actually for non-chain, individual snippets
       // And that it doesn't conflict with listChains or return chain data incorrectly
-      snippets = await api.list(); 
-      logger.info('[overlay.ts] Traditional Snippets loaded:', snippets ? snippets.length : 0);
+      snippets = await api.list();
+      logger.info(
+        '[overlay.ts] Traditional Snippets loaded:',
+        snippets ? snippets.length : 0
+      );
     } catch (e) {
       logger.warn('[overlay.ts] Could not load traditional snippets:', e);
       snippets = [];
@@ -95,73 +106,100 @@ function renderAll(filter = '') {
   renderHistory(filter);
 }
 
-function createGridBox(title: string, preview: string, className = '', onClick: () => void) {
+function createGridBox(
+  title: string,
+  preview: string,
+  className = '',
+  onClick: () => void
+) {
   const box = document.createElement('div');
   box.className = `grid-box ${className}`;
-  
+
   const titleEl = document.createElement('div');
   titleEl.className = 'item-title';
   titleEl.textContent = title;
-  
+
   const previewEl = document.createElement('div');
   previewEl.className = 'item-preview';
   previewEl.textContent = preview;
-  
+
   box.appendChild(titleEl);
   box.appendChild(previewEl);
   box.addEventListener('click', onClick);
-  
+
   return box;
 }
 
 function renderPinnedItems(filter = '') {
   const term = filter.toLowerCase();
   const grid = pinnedGrid;
-  
+
   // Clear existing boxes and empty states more simply
   grid.querySelectorAll('.grid-box, .empty-state').forEach(box => box.remove());
 
-  const pinnedChains = chains.filter(c => c.pinned && 
-    (c.name.toLowerCase().includes(term) || (c.description && c.description.toLowerCase().includes(term)))
+  const pinnedChains = chains.filter(
+    c =>
+      c.pinned &&
+      (c.name.toLowerCase().includes(term) ||
+        (c.description && c.description.toLowerCase().includes(term)))
   );
 
-  logger.info('[overlay.ts] Rendering pinned chains. Count:', pinnedChains.length);
+  logger.info(
+    '[overlay.ts] Rendering pinned chains. Count:',
+    pinnedChains.length
+  );
 
   if (pinnedChains.length > 0) {
-    pinnedChains.slice(0, 6).forEach(chain => { 
-      const title = chain.name.slice(0, 25) + (chain.name.length > 25 ? '...' : '');
+    pinnedChains.slice(0, 6).forEach(chain => {
+      const title =
+        chain.name.slice(0, 25) + (chain.name.length > 25 ? '...' : '');
       let previewText = chain.description || 'No description';
       if (chain.options && chain.options.length > 0 && chain.options[0]) {
         if (chain.options[0].title) {
           previewText = chain.options[0].title;
         } else if (chain.options[0].body) {
-          previewText = chain.options[0].body.substring(0,40) + (chain.options[0].body.length > 40 ? "..." : "");
+          previewText =
+            chain.options[0].body.substring(0, 40) +
+            (chain.options[0].body.length > 40 ? '...' : '');
         }
       }
-      logger.info(`[overlay.ts] Pinned Item Data - ID: ${chain.id}, Name: ${chain.name}, Title: '${title}', Preview: '${previewText}'`);
-      
-      const box = createGridBox(title, previewText, 'chain pinned', () => handleChainSelect(chain));
-      logger.info('[overlay.ts] Created box for pinned item:', box ? 'Valid box' : 'Box creation FAILED');
+      logger.info(
+        `[overlay.ts] Pinned Item Data - ID: ${chain.id}, Name: ${chain.name}, Title: '${title}', Preview: '${previewText}'`
+      );
 
-      if (box) { // Apply debug styles if box is valid
+      const box = createGridBox(title, previewText, 'chain pinned', () =>
+        handleChainSelect(chain)
+      );
+      logger.info(
+        '[overlay.ts] Created box for pinned item:',
+        box ? 'Valid box' : 'Box creation FAILED'
+      );
+
+      if (box) {
+        // Apply debug styles if box is valid
         box.style.border = '2px dashed lime';
         box.style.backgroundColor = 'rgba(0,255,0,0.2)';
         box.style.minHeight = '50px';
         box.style.color = 'white'; // Ensure text is visible against potentially dark lime
         const itemTitleEl = box.querySelector('.item-title') as HTMLElement;
-        if(itemTitleEl) itemTitleEl.style.color = 'white';
+        if (itemTitleEl) itemTitleEl.style.color = 'white';
         const itemPreviewEl = box.querySelector('.item-preview') as HTMLElement;
-        if(itemPreviewEl) itemPreviewEl.style.color = 'lightgrey';
+        if (itemPreviewEl) itemPreviewEl.style.color = 'lightgrey';
       }
 
       grid.appendChild(box);
     });
   }
-  
-  grid.style.display = 'grid'; 
-  
+
+  grid.style.display = 'grid';
+
   if (pinnedChains.length === 0) {
-    const emptyBox = createGridBox('No Pinned Items', 'Pin chains to see them here', 'empty-state', () => {});
+    const emptyBox = createGridBox(
+      'No Pinned Items',
+      'Pin chains to see them here',
+      'empty-state',
+      () => {}
+    );
     emptyBox.style.opacity = '0.7';
     emptyBox.style.cursor = 'default';
     grid.appendChild(emptyBox);
@@ -172,20 +210,30 @@ function renderSnippets(filter = '') {
   const term = filter.toLowerCase();
   const boxes = snippetsGrid.querySelectorAll('.grid-box');
   boxes.forEach(box => box.remove());
-  
-  const filteredSnippets = snippets.filter(sn => sn.content.toLowerCase().includes(term));
-  
+
+  const filteredSnippets = snippets.filter(sn =>
+    sn.content.toLowerCase().includes(term)
+  );
+
   filteredSnippets.slice(0, 3).forEach(snippet => {
-    const title = snippet.content.slice(0, 20) + (snippet.content.length > 20 ? '...' : '');
+    const title =
+      snippet.content.slice(0, 20) + (snippet.content.length > 20 ? '...' : '');
     const preview = snippet.content.slice(0, 40);
-    const box = createGridBox(title, preview, '', () => handleSnippetSelect(snippet));
+    const box = createGridBox(title, preview, '', () =>
+      handleSnippetSelect(snippet)
+    );
     snippetsGrid.appendChild(box);
   });
-  
+
   snippetsGrid.style.display = 'grid';
-  
+
   if (filteredSnippets.length === 0) {
-    const emptyBox = createGridBox('No snippets yet', 'Add some snippets in the main window', '', () => {});
+    const emptyBox = createGridBox(
+      'No snippets yet',
+      'Add some snippets in the main window',
+      '',
+      () => {}
+    );
     emptyBox.style.opacity = '0.5';
     emptyBox.style.cursor = 'default';
     snippetsGrid.appendChild(emptyBox);
@@ -195,29 +243,39 @@ function renderSnippets(filter = '') {
 function renderChains(filter = '') {
   const term = filter.toLowerCase();
   const grid = chainsGrid;
-  
+
   // Clear existing boxes and empty states more simply
   grid.querySelectorAll('.grid-box, .empty-state').forEach(box => box.remove());
-  
-  const nonPinnedChains = chains.filter(ch => !ch.pinned && 
-    (ch.name.toLowerCase().includes(term) || 
-    (ch.description && ch.description.toLowerCase().includes(term)))
+
+  const nonPinnedChains = chains.filter(
+    ch =>
+      !ch.pinned &&
+      (ch.name.toLowerCase().includes(term) ||
+        (ch.description && ch.description.toLowerCase().includes(term)))
   );
 
-  logger.info('[overlay.ts] Rendering non-pinned chains. Count:', nonPinnedChains.length);
-  
+  logger.info(
+    '[overlay.ts] Rendering non-pinned chains. Count:',
+    nonPinnedChains.length
+  );
+
   if (nonPinnedChains.length > 0) {
-    nonPinnedChains.slice(0, 6).forEach(chain => { 
-      const title = chain.name.slice(0, 20) + (chain.name.length > 20 ? '...' : '');
+    nonPinnedChains.slice(0, 6).forEach(chain => {
+      const title =
+        chain.name.slice(0, 20) + (chain.name.length > 20 ? '...' : '');
       let previewText = chain.description || 'No description';
       if (chain.options && chain.options.length > 0 && chain.options[0]) {
         if (chain.options[0].title) {
           previewText = chain.options[0].title;
         } else if (chain.options[0].body) {
-          previewText = chain.options[0].body.substring(0,40) + (chain.options[0].body.length > 40 ? "..." : "");
+          previewText =
+            chain.options[0].body.substring(0, 40) +
+            (chain.options[0].body.length > 40 ? '...' : '');
         }
       }
-      const box = createGridBox(title, previewText, 'chain', () => handleChainSelect(chain));
+      const box = createGridBox(title, previewText, 'chain', () =>
+        handleChainSelect(chain)
+      );
       grid.appendChild(box);
     });
   }
@@ -225,7 +283,12 @@ function renderChains(filter = '') {
   grid.style.display = 'grid';
 
   if (nonPinnedChains.length === 0) {
-    const emptyBox = createGridBox('No other chains', 'Create more chains or pin existing ones.', 'empty-state', () => {});
+    const emptyBox = createGridBox(
+      'No other chains',
+      'Create more chains or pin existing ones.',
+      'empty-state',
+      () => {}
+    );
     emptyBox.style.opacity = '0.7';
     emptyBox.style.cursor = 'default';
     grid.appendChild(emptyBox);
@@ -236,22 +299,30 @@ function renderHistory(filter = '') {
   const term = filter.toLowerCase();
   const boxes = historyGrid.querySelectorAll('.grid-box');
   boxes.forEach(box => box.remove());
-  
+
   const filteredClips = clips
     .filter(c => !c.pinned && c.content.toLowerCase().includes(term))
     .slice(0, 3);
-  
+
   filteredClips.forEach(clip => {
-    const title = clip.content.slice(0, 20) + (clip.content.length > 20 ? '...' : '');
+    const title =
+      clip.content.slice(0, 20) + (clip.content.length > 20 ? '...' : '');
     const preview = new Date(clip.timestamp).toLocaleTimeString();
-    const box = createGridBox(title, preview, '', () => handleClipSelect(clip.content));
+    const box = createGridBox(title, preview, '', () =>
+      handleClipSelect(clip.content)
+    );
     historyGrid.appendChild(box);
   });
-  
+
   historyGrid.style.display = 'grid';
-  
+
   if (filteredClips.length === 0) {
-    const emptyBox = createGridBox('No recent items', 'Copy some text to see clipboard history', '', () => {});
+    const emptyBox = createGridBox(
+      'No recent items',
+      'Copy some text to see clipboard history',
+      '',
+      () => {}
+    );
     emptyBox.style.opacity = '0.5';
     emptyBox.style.cursor = 'default';
     historyGrid.appendChild(emptyBox);
@@ -261,7 +332,7 @@ function renderHistory(filter = '') {
 async function processSnippet(content: string): Promise<string> {
   // Hide all floating grids and show chain runner
   const grids = container.querySelectorAll('.floating-grid');
-  grids.forEach(grid => (grid as HTMLElement).style.display = 'none');
+  grids.forEach(grid => ((grid as HTMLElement).style.display = 'none'));
   chainRunner.style.display = 'block';
 
   const final = await processTextWithChain(
@@ -273,7 +344,7 @@ async function processSnippet(content: string): Promise<string> {
 
   // Restore the grids
   chainRunner.style.display = 'none';
-  grids.forEach(grid => (grid as HTMLElement).style.display = 'grid');
+  grids.forEach(grid => ((grid as HTMLElement).style.display = 'grid'));
   return final;
 }
 
@@ -316,7 +387,10 @@ function showFlash() {
 }
 
 async function handleSnippetSelect(snippet: Snippet) {
-  logger.info('[overlay.ts] handleSnippetSelect called for snippet ID (if available):', snippet.id);
+  logger.info(
+    '[overlay.ts] handleSnippetSelect called for snippet ID (if available):',
+    snippet.id
+  );
   const final = await processSnippet(snippet.content);
   await api.insertSnippet(final);
   showFlash();
@@ -324,34 +398,57 @@ async function handleSnippetSelect(snippet: Snippet) {
 }
 
 async function handleChainSelect(chain: Chain) {
-  logger.info('[overlay.ts] handleChainSelect called for chain:', chain.name, 'ID:', chain.id, 'Pinned:', chain.pinned);
+  logger.info(
+    '[overlay.ts] handleChainSelect called for chain:',
+    chain.name,
+    'ID:',
+    chain.id,
+    'Pinned:',
+    chain.pinned
+  );
   let contentToExecute = '';
-  
-  if (chain.options && chain.options.length > 0 && chain.options[0] && typeof chain.options[0].body === 'string') {
+
+  if (
+    chain.options &&
+    chain.options.length > 0 &&
+    chain.options[0] &&
+    typeof chain.options[0].body === 'string'
+  ) {
     contentToExecute = chain.options[0].body;
-    logger.info(`[overlay.ts] Executing first option of chain "${chain.name}". Body (first 100 chars):`, contentToExecute.substring(0, 100));
+    logger.info(
+      `[overlay.ts] Executing first option of chain "${chain.name}". Body (first 100 chars):`,
+      contentToExecute.substring(0, 100)
+    );
   } else {
     // Fallback: if chain has no options or first option has no body or is not a string.
     // This behavior might need refinement. For now, just insert the chain name as a link.
     // This would allow chainService to try and resolve it again if it's a direct link like [Chain:MyChainName]
-    contentToExecute = `[Chain:${chain.name}]`; 
-    logger.warn(`[overlay.ts] Chain "${chain.name}" (ID: ${chain.id}) has no executable options or first option body is invalid. Defaulting to insert its link: ${contentToExecute}`);
+    contentToExecute = `[Chain:${chain.name}]`;
+    logger.warn(
+      `[overlay.ts] Chain "${chain.name}" (ID: ${chain.id}) has no executable options or first option body is invalid. Defaulting to insert its link: ${contentToExecute}`
+    );
     // As an alternative, we could show an error or do nothing.
     // For now, we proceed to processSnippet which might handle the [Chain:Name] string.
   }
 
   try {
     // processSnippet uses processTextWithChain from chainService, which handles [Chain:] links and [?:] prompts
-    const finalOutput = await processSnippet(contentToExecute); 
-    logger.info(`[overlay.ts] Chain "${chain.name}" processed. Output (first 100 chars):`, finalOutput.substring(0,100));
+    const finalOutput = await processSnippet(contentToExecute);
+    logger.info(
+      `[overlay.ts] Chain "${chain.name}" processed. Output (first 100 chars):`,
+      finalOutput.substring(0, 100)
+    );
     await api.insertSnippet(finalOutput);
     showFlash();
   } catch (error) {
-    logger.error(`[overlay.ts] Error processing or inserting chain "${chain.name}" (ID: ${chain.id}):`, error);
+    logger.error(
+      `[overlay.ts] Error processing or inserting chain "${chain.name}" (ID: ${chain.id}):`,
+      error
+    );
     // TODO: Optionally display error to user in overlay or via flash message
   } finally {
     // Ensure overlay hides even if there was an error during processing/insertion
-    api.hideOverlay?.(); 
+    api.hideOverlay?.();
   }
 }
 
@@ -375,7 +472,8 @@ function showFloatingGrids(position: string) {
   }
 
   // --- Debug Simplification START ---
-  container.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out';
+  container.style.transition =
+    'opacity 0.2s ease-in-out, transform 0.2s ease-in-out';
   container.style.position = 'fixed';
   container.style.width = '400px'; // Fixed width for now
   container.style.height = '500px'; // Fixed height for now
@@ -393,7 +491,13 @@ function showFloatingGrids(position: string) {
   // --- Debug Simplification END ---
 
   // Hide all grids initially, then show the primary one (pinnedGrid)
-  const allGrids = [pinnedGrid, snippetsGrid, chainsGrid, historyGrid, chainRunner];
+  const allGrids = [
+    pinnedGrid,
+    snippetsGrid,
+    chainsGrid,
+    historyGrid,
+    chainRunner,
+  ];
   allGrids.forEach(grid => {
     if (grid) grid.style.display = 'none';
   });
@@ -405,7 +509,7 @@ function showFloatingGrids(position: string) {
   } else {
     logger.warn('[overlay.ts] pinnedGrid element not found.');
   }
-  
+
   // Original logic for positioning and showing specific grids can be restored later
   /*
   const display = window.screen; // This might not be available or correct, Electron screen API is via main
@@ -451,7 +555,9 @@ function showFloatingGrids(position: string) {
   if (chainRunner) chainRunner.style.display = 'none';
   */
 
-  logger.info('[overlay.ts] Overlay should now be visible and styled for debug.');
+  logger.info(
+    '[overlay.ts] Overlay should now be visible and styled for debug.'
+  );
   // window.electronAPI?.send('overlay:shown'); // Removed: Use contextBridge API if needed
 }
 
@@ -467,67 +573,82 @@ loadData();
 
 // BEGINNING OF NEW/MODIFIED IPC HANDLING
 if (api && typeof api.on === 'function' && typeof api.send === 'function') {
-    logger.info('[overlay.ts] Setting up IPC listeners via api (formerly window.api)');
+  logger.info(
+    '[overlay.ts] Setting up IPC listeners via api (formerly window.api)'
+  );
 
-    // Listener for when main process tells overlay to HIDE its content
-    api.on('overlay:hide', () => {
-        logger.info('[overlay.ts] ✅ RECEIVED overlay:hide command from main.');
-        
-        // Hide the main overlay container
-        if (container) {
-            container.style.opacity = '0'; // Example: fade out
-            // container.style.transform = 'translateY(-20px)'; // Example: slide up
-            // After animation, or directly if no animation:
-            setTimeout(() => { // Simulate animation duration before truly "hiding"
-                if (container) container.style.display = 'none';
-                logger.info('[overlay.ts] Overlay content (e.g., #container) visually hidden.');
-                
-                // CRITICAL: Send acknowledgment back to the main process
-                logger.info('[overlay.ts] ✅ SENDING overlay:hidden-ack to main.');
-                api.send('overlay:hidden-ack'); 
-            }, 150); // Adjust timeout to match any CSS animation/transition
-        } else {
-            logger.warn('[overlay.ts] Could not find #container to hide. Sending ack immediately.');
-            // Still send ack even if container isn't found, so main isn't stuck
-            logger.info('[overlay.ts] ✅ SENDING overlay:hidden-ack to main (container not found).');
-            api.send('overlay:hidden-ack');
-        }
-    });
+  // Listener for when main process tells overlay to HIDE its content
+  api.on('overlay:hide', () => {
+    logger.info('[overlay.ts] ✅ RECEIVED overlay:hide command from main.');
 
-    // Listener for when main process tells overlay to SHOW its content
-    // (This replaces the older window.events?.onOverlayShow)
-    api.on('overlay:show', (data: any) => { 
-        logger.info(`[overlay.ts] Received overlay:show from main with data:`, data);
-        if (container) {
-            // Ensure container is ready to be shown before populating
-            container.style.display = 'flex'; // Or 'block' depending on your layout needs from showFloatingGrids
-            container.style.opacity = '0'; // Start transparent for fade-in if desired
-            // requestAnimationFrame helps ensure display style is applied before starting animation/population
-            requestAnimationFrame(() => {
-                showFloatingGrids(data?.position); // This function should handle final opacity/transform for show
-            });
-        } else {
-            logger.error('[overlay.ts] Main overlay #container not found for show! Cannot display overlay.');
-        }
-    });
+    // Hide the main overlay container
+    if (container) {
+      container.style.opacity = '0'; // Example: fade out
+      // container.style.transform = 'translateY(-20px)'; // Example: slide up
+      // After animation, or directly if no animation:
+      setTimeout(() => {
+        // Simulate animation duration before truly "hiding"
+        if (container) container.style.display = 'none';
+        logger.info(
+          '[overlay.ts] Overlay content (e.g., #container) visually hidden.'
+        );
 
-    // Listener for theme changes from main process
-    // (This replaces the older window.events?.onThemeChanged)
-    api.on('settings:changed', (newSettings: any) => {
-        logger.info('[overlay.ts] Received settings:changed from main.');
-        if (newSettings && newSettings.theme !== currentTheme) {
-            if (newSettings.theme === 'light') {
-                document.body.classList.add('light');
-            } else {
-                document.body.classList.remove('light');
-            }
-            currentTheme = newSettings.theme;
-            logger.info(`[overlay.ts] Theme changed to: ${currentTheme}`);
-        }
-    });
+        // CRITICAL: Send acknowledgment back to the main process
+        logger.info('[overlay.ts] ✅ SENDING overlay:hidden-ack to main.');
+        api.send('overlay:hidden-ack');
+      }, 150); // Adjust timeout to match any CSS animation/transition
+    } else {
+      logger.warn(
+        '[overlay.ts] Could not find #container to hide. Sending ack immediately.'
+      );
+      // Still send ack even if container isn't found, so main isn't stuck
+      logger.info(
+        '[overlay.ts] ✅ SENDING overlay:hidden-ack to main (container not found).'
+      );
+      api.send('overlay:hidden-ack');
+    }
+  });
 
+  // Listener for when main process tells overlay to SHOW its content
+  // (This replaces the older window.events?.onOverlayShow)
+  api.on('overlay:show', (data: any) => {
+    logger.info(
+      `[overlay.ts] Received overlay:show from main with data:`,
+      data
+    );
+    if (container) {
+      // Ensure container is ready to be shown before populating
+      container.style.display = 'flex'; // Or 'block' depending on your layout needs from showFloatingGrids
+      container.style.opacity = '0'; // Start transparent for fade-in if desired
+      // requestAnimationFrame helps ensure display style is applied before starting animation/population
+      requestAnimationFrame(() => {
+        showFloatingGrids(data?.position); // This function should handle final opacity/transform for show
+      });
+    } else {
+      logger.error(
+        '[overlay.ts] Main overlay #container not found for show! Cannot display overlay.'
+      );
+    }
+  });
+
+  // Listener for theme changes from main process
+  // (This replaces the older window.events?.onThemeChanged)
+  api.on('settings:changed', (newSettings: any) => {
+    logger.info('[overlay.ts] Received settings:changed from main.');
+    if (newSettings && newSettings.theme !== currentTheme) {
+      if (newSettings.theme === 'light') {
+        document.body.classList.add('light');
+      } else {
+        document.body.classList.remove('light');
+      }
+      currentTheme = newSettings.theme;
+      logger.info(`[overlay.ts] Theme changed to: ${currentTheme}`);
+    }
+  });
 } else {
-    logger.error('[overlay.ts] CRITICAL: api (window.api) or api.on/send is not defined. Check preload script and context isolation setup.');
+  logger.error(
+    '[overlay.ts] CRITICAL: api (window.api) or api.on/send is not defined. Check preload script and context isolation setup.'
+  );
 }
 // END OF NEW/MODIFIED IPC HANDLING
 

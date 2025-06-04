@@ -66,13 +66,16 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain }) => {
       // id: globalThis.crypto.randomUUID(), // Using globalThis directly
       id: crypto.randomUUID(), // Modern browsers provide crypto on globalThis by default
       title: 'First Option',
-      body: 'Edit this first option...'
+      body: 'Edit this first option...',
     };
     setIsLoading(true);
     setError(null); // Clear previous errors before trying
     try {
       const defaultOptions: ChainOption[] = [defaultOption];
-      const newChain = await window.api.createChain(nameToCreate, defaultOptions);
+      const newChain = await window.api.createChain(
+        nameToCreate,
+        defaultOptions
+      );
       if (newChain && newChain.id) {
         await fetchChains();
         onSelectChain(newChain.id);
@@ -84,8 +87,13 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain }) => {
       }
     } catch (err: any) {
       console.error('Error creating chain:', err);
-      if (err.message && err.message.toLowerCase().includes('unique constraint failed')) {
-        setError(`A chain with the name "${nameToCreate}" already exists. Please choose a different name.`);
+      if (
+        err.message &&
+        err.message.toLowerCase().includes('unique constraint failed')
+      ) {
+        setError(
+          `A chain with the name "${nameToCreate}" already exists. Please choose a different name.`
+        );
       } else {
         setError(err.message || 'Failed to create chain');
       }
@@ -122,48 +130,98 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain }) => {
       alignItems: 'center',
     },
     listItemHover: { backgroundColor: '#f0f0f0' }, // Example hover
-    deleteButton: { color: 'red', marginLeft: '10px', cursor: 'pointer', border: 'none', background: 'none' },
+    deleteButton: {
+      color: 'red',
+      marginLeft: '10px',
+      cursor: 'pointer',
+      border: 'none',
+      background: 'none',
+    },
     error: { color: 'red' },
-    loading: { fontStyle: 'italic'}
+    loading: { fontStyle: 'italic' },
   };
 
   if (isLoading) return <p>Loading chains...</p>;
   // Error display will be handled below, next to relevant controls
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '10px' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        gap: '10px',
+      }}
+    >
       <h3>SnipChains</h3>
-      {error && !showNameInput && <p style={{ color: 'red' }}>{error}</p>} 
+      {error && !showNameInput && <p style={{ color: 'red' }}>{error}</p>}
       {/* Show general errors if not in name input mode */}
 
       {!showNameInput ? (
-        <button onClick={handleInitiateCreateChain} style={{ padding: '8px', cursor: 'pointer' }} disabled={isLoading}>
+        <button
+          onClick={handleInitiateCreateChain}
+          style={{ padding: '8px', cursor: 'pointer' }}
+          disabled={isLoading}
+        >
           Create New Chain
         </button>
       ) : (
-        <div style={{ border: '1px solid #ccc', padding: '10px', borderRadius: '4px', background: '#f9f9f9' }}>
+        <div
+          style={{
+            border: '1px solid #ccc',
+            padding: '10px',
+            borderRadius: '4px',
+            background: '#f9f9f9',
+          }}
+        >
           <h4>Enter New Chain Name:</h4>
           <input
             type="text"
             value={newChainName}
-            onChange={(e) => setNewChainName(e.target.value)}
+            onChange={e => setNewChainName(e.target.value)}
             placeholder="My Awesome Chain"
-            style={{ padding: '6px', border: '1px solid #ccc', borderRadius: '4px', width: 'calc(100% - 14px)', marginBottom: '8px' }}
+            style={{
+              padding: '6px',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              width: 'calc(100% - 14px)',
+              marginBottom: '8px',
+            }}
             disabled={isLoading}
             autoFocus
           />
-          {error && <p style={{ color: 'red', fontSize: '0.9em', margin: '0 0 8px 0' }}>{error}</p>}
+          {error && (
+            <p style={{ color: 'red', fontSize: '0.9em', margin: '0 0 8px 0' }}>
+              {error}
+            </p>
+          )}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button 
-              onClick={handleConfirmCreateChain} 
-              style={{ padding: '8px', cursor: 'pointer', flexGrow: 1, background: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px' }} 
+            <button
+              onClick={handleConfirmCreateChain}
+              style={{
+                padding: '8px',
+                cursor: 'pointer',
+                flexGrow: 1,
+                background: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+              }}
               disabled={isLoading}
             >
               {isLoading ? 'Creating...' : 'Confirm'}
             </button>
-            <button 
-              onClick={handleCancelCreateChain} 
-              style={{ padding: '8px', cursor: 'pointer', flexGrow: 1, background: '#f44336', color: 'white', border: 'none', borderRadius: '4px' }} 
+            <button
+              onClick={handleCancelCreateChain}
+              style={{
+                padding: '8px',
+                cursor: 'pointer',
+                flexGrow: 1,
+                background: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+              }}
               disabled={isLoading}
             >
               Cancel
@@ -171,23 +229,36 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain }) => {
           </div>
         </div>
       )}
-      
+
       {chains.length === 0 && !isLoading && !showNameInput && (
         <p>No chains found. Click "Create New Chain" to start.</p>
       )}
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, overflowY: 'auto', flexGrow: 1 }}>
-        {chains.map((chain) => (
+      <ul
+        style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: 0,
+          overflowY: 'auto',
+          flexGrow: 1,
+        }}
+      >
+        {chains.map(chain => (
           <li
             key={chain.id}
             style={styles.listItem}
             onClick={() => onSelectChain(chain.id)}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = styles.listItemHover.backgroundColor)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            onMouseEnter={e =>
+              (e.currentTarget.style.backgroundColor =
+                styles.listItemHover.backgroundColor)
+            }
+            onMouseLeave={e =>
+              (e.currentTarget.style.backgroundColor = 'transparent')
+            }
           >
             <span>{chain.name}</span>
-            <button 
-              style={styles.deleteButton} 
-              onClick={(e) => { 
+            <button
+              style={styles.deleteButton}
+              onClick={e => {
                 e.stopPropagation(); // Prevent li onClick from firing
                 handleDeleteChain(chain.id, chain.name);
               }}
@@ -202,4 +273,4 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain }) => {
   );
 };
 
-export default ChainListPanel; 
+export default ChainListPanel;

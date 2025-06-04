@@ -37,7 +37,8 @@ const Modal: React.FC<ModalProps> = ({
 
   const handleConfirm = () => {
     if (onConfirm) {
-      if (promptInputType && !children) { // Only pass inputValue if it's an internal prompt and no children override
+      if (promptInputType && !children) {
+        // Only pass inputValue if it's an internal prompt and no children override
         onConfirm(inputValue);
       } else {
         onConfirm(); // For confirmation modals or when children handle input
@@ -64,7 +65,7 @@ const Modal: React.FC<ModalProps> = ({
 
   return (
     <div style={modalOverlayStyle} onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">{title}</h3>
           <button className="modal-close-button" onClick={onClose}>
@@ -77,14 +78,14 @@ const Modal: React.FC<ModalProps> = ({
             <input
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={e => setInputValue(e.target.value)}
               autoFocus
             />
           )}
           {!children && promptInputType === 'textarea' && (
             <textarea
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={e => setInputValue(e.target.value)}
               autoFocus
             />
           )}
@@ -104,4 +105,4 @@ const Modal: React.FC<ModalProps> = ({
   );
 };
 
-export default Modal; 
+export default Modal;

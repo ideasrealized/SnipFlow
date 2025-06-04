@@ -4,14 +4,18 @@ import type { Settings, PinnedItem } from './types';
 const genericApi = {
   send: (channel: string, ...args: any[]) => ipcRenderer.send(channel, ...args),
   on: (channel: string, listener: (...args: any[]) => void) => {
-    const wrappedListener = (event: Electron.IpcRendererEvent, ...args: any[]) => listener(...args);
+    const wrappedListener = (
+      event: Electron.IpcRendererEvent,
+      ...args: any[]
+    ) => listener(...args);
     ipcRenderer.on(channel, wrappedListener);
     // Return a cleanup function to remove the listener
     return () => {
       ipcRenderer.removeListener(channel, wrappedListener);
     };
   },
-  invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
+  invoke: (channel: string, ...args: any[]) =>
+    ipcRenderer.invoke(channel, ...args),
 };
 
 contextBridge.exposeInMainWorld('api', {
@@ -27,24 +31,35 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('update-snippet', id, content),
   remove: (id: number) => ipcRenderer.invoke('delete-snippet', id),
   listChains: () => ipcRenderer.invoke('list-chains'),
-  createChain: (name: string, nodes: any[], description?: string) => ipcRenderer.invoke('create-chain', name, nodes, description),
-  getChainByName: (name: string) => ipcRenderer.invoke('get-chain-by-name', name),
+  createChain: (name: string, nodes: any[], description?: string) =>
+    ipcRenderer.invoke('create-chain', name, nodes, description),
+  getChainByName: (name: string) =>
+    ipcRenderer.invoke('get-chain-by-name', name),
   getChainById: (id: number) => ipcRenderer.invoke('get-chain-by-id', id),
-  updateChain: (id: number, data: any) => ipcRenderer.invoke('update-chain', id, data),
+  updateChain: (id: number, data: any) =>
+    ipcRenderer.invoke('update-chain', id, data),
   deleteChain: (id: number) => ipcRenderer.invoke('delete-chain', id),
   getClipboardHistory: () => ipcRenderer.invoke('get-clipboard-history'),
-  pinClipboardItem: (id: string, pinned: boolean) => ipcRenderer.invoke('pin-clipboard-item', id, pinned),
+  pinClipboardItem: (id: string, pinned: boolean) =>
+    ipcRenderer.invoke('pin-clipboard-item', id, pinned),
   getSettings: () => ipcRenderer.invoke('get-settings'),
-  saveSettings: (settings: Partial<Settings>) => ipcRenderer.invoke('save-settings', settings),
-  insertSnippet: (content: string) => ipcRenderer.send('insert-snippet', content),
+  saveSettings: (settings: Partial<Settings>) =>
+    ipcRenderer.invoke('save-settings', settings),
+  insertSnippet: (content: string) =>
+    ipcRenderer.send('insert-snippet', content),
   getErrorLog: () => ipcRenderer.invoke('get-error-log'),
   exportDiagnostics: () => ipcRenderer.invoke('export-diagnostics'),
 
   // Overlay specific
-  registerOverlayPinnedItemsProvider: (provider: () => Promise<PinnedItem[]>) => {
-    console.warn('registerOverlayPinnedItemsProvider from preload is complex and might not work as expected if called from other windows.');
+  registerOverlayPinnedItemsProvider: (
+    provider: () => Promise<PinnedItem[]>
+  ) => {
+    console.warn(
+      'registerOverlayPinnedItemsProvider from preload is complex and might not work as expected if called from other windows.'
+    );
   },
-  sendToOverlay: (channel: string, ...args: any[]) => ipcRenderer.send(channel, ...args),
+  sendToOverlay: (channel: string, ...args: any[]) =>
+    ipcRenderer.send(channel, ...args),
   onOverlayEvent: (channel: string, listener: (...args: any[]) => void) => {
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);

@@ -10,7 +10,9 @@ interface HybridChainEditorViewProps {
 
 // Assuming window.api is typed via global declaration in another file (e.g., ChainListPanel.tsx or a central types file)
 
-const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }) => {
+const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({
+  chainId,
+}) => {
   const [chain, setChain] = useState<Chain | null>(null);
   const [chainName, setChainName] = useState<string>('');
   const [chainDescription, setChainDescription] = useState<string>('');
@@ -62,7 +64,7 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
       setError('Chain name cannot be empty.');
       return;
     }
-    
+
     setIsSaving(true);
     setError(null);
     try {
@@ -81,7 +83,9 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
         updateData.layoutData = chain.layoutData;
       }
 
-      console.log(`[HybridChainEditorView] About to call window.api.updateChain with:`);
+      console.log(
+        `[HybridChainEditorView] About to call window.api.updateChain with:`
+      );
       console.log(`  ID: ${chain.id} (type: ${typeof chain.id})`);
       console.log(`  Data:`, JSON.parse(JSON.stringify(updateData)));
 
@@ -95,14 +99,14 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
       console.log('[HybridChainEditorView] Chain saved successfully via API.'); // For now, just log
 
       // Optionally re-fetch to confirm, or rely on local state being source of truth post-save
-      // fetchChainDetails(chain.id); 
+      // fetchChainDetails(chain.id);
     } catch (err: any) {
       console.error('Error saving chain:', err);
       setError(err.message || 'Failed to save chain');
     }
     setIsSaving(false);
   };
-  
+
   // Callback for ChainOptionsEditor to update options state
   const handleOptionsChange = (newOptions: ChainOption[]) => {
     setOptions(newOptions);
@@ -110,17 +114,48 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
 
   // Inline styles for layout
   const styles = {
-    container: { display: 'flex', flexDirection: 'column' as 'column', height: '100%', gap: '10px' },
-    metadataForm: { display: 'flex', flexDirection: 'column' as 'column', gap: '8px', paddingBottom: '10px', borderBottom: '1px solid #ccc' },
-    editorAndMinimap: { display: 'flex', flexGrow: 1, gap: '10px', overflow: 'hidden' /* Prevent outer scroll */ },
-    optionEditorContainer: { flexGrow: 3, /* border: '1px solid #eee', */ padding: '0px', overflowY: 'auto' as 'auto' },
-    miniMapContainer: { flexGrow: 1, border: '1px solid #eee', padding: '10px', overflowY: 'auto' as 'auto', background: '#f9f9f9' },
+    container: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      height: '100%',
+      gap: '10px',
+    },
+    metadataForm: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '8px',
+      paddingBottom: '10px',
+      borderBottom: '1px solid #ccc',
+    },
+    editorAndMinimap: {
+      display: 'flex',
+      flexGrow: 1,
+      gap: '10px',
+      overflow: 'hidden' /* Prevent outer scroll */,
+    },
+    optionEditorContainer: {
+      flexGrow: 3,
+      /* border: '1px solid #eee', */ padding: '0px',
+      overflowY: 'auto' as const,
+    },
+    miniMapContainer: {
+      flexGrow: 1,
+      border: '1px solid #eee',
+      padding: '10px',
+      overflowY: 'auto' as const,
+      background: '#f9f9f9',
+    },
     label: { fontWeight: 'bold', marginBottom: '4px' },
-    input: { padding: '6px', border: '1px solid #ccc', borderRadius: '4px' }, 
-    textarea: { padding: '6px', border: '1px solid #ccc', borderRadius: '4px', minHeight: '60px' }, // Style for textarea
+    input: { padding: '6px', border: '1px solid #ccc', borderRadius: '4px' },
+    textarea: {
+      padding: '6px',
+      border: '1px solid #ccc',
+      borderRadius: '4px',
+      minHeight: '60px',
+    }, // Style for textarea
     button: { padding: '8px 15px', cursor: 'pointer' },
     error: { color: 'red' },
-    loading: { fontStyle: 'italic'}
+    loading: { fontStyle: 'italic' },
   };
 
   if (isLoading) return <p style={styles.loading}>Loading chain details...</p>;
@@ -130,43 +165,57 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
   return (
     <div style={styles.container}>
       <div style={styles.metadataForm}>
-        <h3>Edit Chain: {chain.name} (ID: {chain.id})</h3>
+        <h3>
+          Edit Chain: {chain.name} (ID: {chain.id})
+        </h3>
         <div>
-          <label htmlFor="chainName" style={styles.label}>Name:</label>
-          <input 
-            type="text" 
-            id="chainName" 
-            style={styles.input} 
-            value={chainName} 
-            onChange={(e) => setChainName(e.target.value)} 
+          <label htmlFor="chainName" style={styles.label}>
+            Name:
+          </label>
+          <input
+            type="text"
+            id="chainName"
+            style={styles.input}
+            value={chainName}
+            onChange={e => setChainName(e.target.value)}
           />
         </div>
         <div>
-          <label htmlFor="chainDescription" style={styles.label}>Description:</label>
-          <textarea 
-            id="chainDescription" 
-            style={styles.textarea} 
-            value={chainDescription} 
-            onChange={(e) => setChainDescription(e.target.value)} 
+          <label htmlFor="chainDescription" style={styles.label}>
+            Description:
+          </label>
+          <textarea
+            id="chainDescription"
+            style={styles.textarea}
+            value={chainDescription}
+            onChange={e => setChainDescription(e.target.value)}
           />
         </div>
         <div>
-          <label htmlFor="chainPinned" style={{ ...styles.label, display: 'flex', alignItems: 'center' }}>
-            <input 
-              type="checkbox" 
-              id="chainPinned" 
-              style={{ marginRight: '8px' }} 
-              checked={isPinned} 
-              onChange={(e) => setIsPinned(e.target.checked)} 
+          <label
+            htmlFor="chainPinned"
+            style={{ ...styles.label, display: 'flex', alignItems: 'center' }}
+          >
+            <input
+              type="checkbox"
+              id="chainPinned"
+              style={{ marginRight: '8px' }}
+              checked={isPinned}
+              onChange={e => setIsPinned(e.target.checked)}
             />
             Pinned
           </label>
         </div>
         {/* Tag editor will go here later */}
-        <button onClick={handleSaveChanges} style={styles.button} disabled={isSaving || isLoading}>
+        <button
+          onClick={handleSaveChanges}
+          style={styles.button}
+          disabled={isSaving || isLoading}
+        >
           {isSaving ? 'Saving...' : 'Save Chain'}
         </button>
-        {error && <p style={styles.error}>Error during save: {error}</p>} {/* Show save-specific errors here */}
+        {error && <p style={styles.error}>Error during save: {error}</p>}{' '}
+        {/* Show save-specific errors here */}
       </div>
 
       <div style={styles.editorAndMinimap}>
@@ -181,7 +230,10 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
         </div>
         <div style={styles.miniMapContainer}>
           {/* <h4>Mini-Map (Visualizer)</h4> // Title can be part of the component itself */}
-          <ChainVisualizerMiniMap currentChainOptions={options} currentChainName={chainName} />
+          <ChainVisualizerMiniMap
+            currentChainOptions={options}
+            currentChainName={chainName}
+          />
           {/* <p>(ChainVisualizerMiniMap Placeholder)</p> */}
         </div>
       </div>
@@ -189,4 +241,4 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
   );
 };
 
-export default HybridChainEditorView; 
+export default HybridChainEditorView;

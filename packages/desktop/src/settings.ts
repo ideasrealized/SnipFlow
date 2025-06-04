@@ -9,7 +9,13 @@ export interface Settings {
   overlayY?: number;
   edgeHover: {
     enabled: boolean;
-    position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'left-center' | 'right-center';
+    position:
+      | 'top-left'
+      | 'top-right'
+      | 'bottom-left'
+      | 'bottom-right'
+      | 'left-center'
+      | 'right-center';
     triggerSize: number; // pixels from edge
     delay: number; // ms delay before showing
   };
@@ -17,15 +23,15 @@ export interface Settings {
 
 const DIR = join(homedir(), '.snipflow');
 const FILE = join(DIR, 'settings.json');
-let settings: Settings = { 
-  overlaySide: 'right', 
+let settings: Settings = {
+  overlaySide: 'right',
   theme: 'dark',
   edgeHover: {
     enabled: true,
     position: 'right-center',
     triggerSize: 50,
-    delay: 200
-  }
+    delay: 200,
+  },
 };
 
 export function loadSettings(): Settings {
@@ -34,7 +40,9 @@ export function loadSettings(): Settings {
       const data = JSON.parse(readFileSync(FILE, 'utf-8')) as Partial<Settings>;
       settings = { ...settings, ...data } as Settings;
     }
-  } catch {}
+  } catch (error) {
+    console.error('Failed to load settings:', error);
+  }
   return settings;
 }
 

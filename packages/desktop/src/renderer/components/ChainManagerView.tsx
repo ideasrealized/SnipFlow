@@ -3,16 +3,18 @@ import ChainListPanel from './ChainListPanel';
 import HybridChainEditorView from './HybridChainEditorView';
 
 const ChainManagerView: React.FC = () => {
-  const [selectedChainId, setSelectedChainId] = React.useState<number | null>(null);
+  const [selectedChainId, setSelectedChainId] = React.useState<number | null>(
+    null
+  );
 
   // Styles (inline for brevity, consider moving to CSS files/modules)
   const styles = {
     container: {
       display: 'flex',
-      flexDirection: 'row' as 'row',
+      flexDirection: 'row' as const,
       height: '100vh', // Or parent height
       padding: '10px',
-      boxSizing: 'border-box' as 'border-box',
+      boxSizing: 'border-box' as const,
       fontFamily: 'Arial, sans-serif', // Basic font
     },
     sidebar: {
@@ -21,19 +23,19 @@ const ChainManagerView: React.FC = () => {
       borderRight: '1px solid #ccc',
       paddingRight: '10px',
       marginRight: '10px',
-      overflowY: 'auto' as 'auto',
+      overflowY: 'auto' as const,
     },
     mainContent: {
       flexGrow: 1,
-      overflowY: 'auto' as 'auto',
+      overflowY: 'auto' as const,
       paddingLeft: '10px',
     },
     placeholderText: {
       color: '#777',
-      textAlign: 'center' as 'center',
+      textAlign: 'center' as const,
       marginTop: '50px',
-      fontSize: '1.1em'
-    }
+      fontSize: '1.1em',
+    },
   };
 
   const handleChainSelected = (id: number) => {
@@ -53,11 +55,13 @@ const ChainManagerView: React.FC = () => {
         {selectedChainId ? (
           <HybridChainEditorView chainId={selectedChainId} />
         ) : (
-          <p style={styles.placeholderText}>Select a chain from the list to edit, or create a new one.</p>
+          <p style={styles.placeholderText}>
+            Select a chain from the list to edit, or create a new one.
+          </p>
         )}
       </div>
     </div>
   );
 };
 
-export default ChainManagerView; 
+export default ChainManagerView;

@@ -72,7 +72,7 @@ function rotate(file: string | null) {
             if (fs.existsSync(oldestFile)) {
               fs.unlinkSync(oldestFile);
             }
-          } catch (e){
+          } catch (e) {
             // console.error('Error removing oldest log file during rotation:', dest, e);
           }
           // The original code had a potential bug here, trying to rename to a file that should be deleted
@@ -94,16 +94,18 @@ export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
 function write(file: string | null, level: LogLevel, ...args: any[]) {
   const time = new Date().toISOString();
-  const message = args.map(arg => {
-    if (typeof arg === 'object' && arg !== null) {
-      try {
-        return JSON.stringify(arg);
-      } catch (e) {
-        return '[Unserializable Object]';
+  const message = args
+    .map(arg => {
+      if (typeof arg === 'object' && arg !== null) {
+        try {
+          return JSON.stringify(arg);
+        } catch (e) {
+          return '[Unserializable Object]';
+        }
       }
-    }
-    return String(arg);
-  }).join(' ');
+      return String(arg);
+    })
+    .join(' ');
   const line = `[${time}] [${level}] ${message}\\n`;
   if (hasNodeFileAccess && file && fs) {
     fs.appendFileSync(file, line);
@@ -144,7 +146,7 @@ export const logger = {
         ? String(fs.readFileSync(ERROR_LOG)).split('\\n')
         : [];
     } catch (e) {
-      console.error("Failed to get error log:", e);
+      console.error('Failed to get error log:', e);
       return ['Failed to read error log file.'];
     }
   },

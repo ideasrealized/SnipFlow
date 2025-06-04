@@ -6,7 +6,7 @@ const SnippetManagerView: React.FC = () => {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [editingSnippet, setEditingSnippet] = useState<Snippet | null>(null);
   const [snippetToDelete, setSnippetToDelete] = useState<Snippet | null>(null);
   const [newSnippetContent, setNewSnippetContent] = useState('');
@@ -54,7 +54,11 @@ const SnippetManagerView: React.FC = () => {
     if (!editingSnippet || !editedContent.trim()) return;
     setError(null);
     try {
-      await window.api.invoke('update-snippet', editingSnippet.id, editedContent);
+      await window.api.invoke(
+        'update-snippet',
+        editingSnippet.id,
+        editedContent
+      );
       setEditingSnippet(null);
       fetchSnippets();
     } catch (err: any) {
@@ -98,15 +102,23 @@ const SnippetManagerView: React.FC = () => {
     }
   };
 
-  if (isLoading) return <div className="view-container">Loading snippets...</div>;
-  if (error) return (
-    <div className="view-container">
-      <p className="empty-state-message">Error: {error}</p> 
-      <button className="button button-primary" onClick={() => { setError(null); fetchSnippets();}}>
-        Try Again
-      </button>
-    </div>
-  );
+  if (isLoading)
+    return <div className="view-container">Loading snippets...</div>;
+  if (error)
+    return (
+      <div className="view-container">
+        <p className="empty-state-message">Error: {error}</p>
+        <button
+          className="button button-primary"
+          onClick={() => {
+            setError(null);
+            fetchSnippets();
+          }}
+        >
+          Try Again
+        </button>
+      </div>
+    );
 
   return (
     <div className="view-container">
@@ -115,10 +127,12 @@ const SnippetManagerView: React.FC = () => {
         <input
           type="text"
           value={newSnippetContent}
-          onChange={(e) => setNewSnippetContent(e.target.value)}
+          onChange={e => setNewSnippetContent(e.target.value)}
           placeholder="Enter new snippet content"
         />
-        <button type="submit" className="button button-primary">Create Snippet</button>
+        <button type="submit" className="button button-primary">
+          Create Snippet
+        </button>
       </form>
 
       {snippets.length === 0 && !isLoading && (
@@ -126,14 +140,34 @@ const SnippetManagerView: React.FC = () => {
       )}
 
       <ul className="item-list">
-        {snippets.map((snippet) => (
+        {snippets.map(snippet => (
           <li key={snippet.id} className="item-list-item">
             <span className="item-content">{snippet.content}</span>
             <div className="item-actions">
-              <button className="button button-secondary" onClick={() => handleCopySnippet(snippet.content)}>Copy</button>
-              <button className="button button-secondary" onClick={() => handlePasteSnippet(snippet.content)}>Paste</button>
-              <button className="button button-secondary" onClick={() => handleEditSnippet(snippet)}>Edit</button>
-              <button className="button button-danger" onClick={() => setSnippetToDelete(snippet)}>Delete</button>
+              <button
+                className="button button-secondary"
+                onClick={() => handleCopySnippet(snippet.content)}
+              >
+                Copy
+              </button>
+              <button
+                className="button button-secondary"
+                onClick={() => handlePasteSnippet(snippet.content)}
+              >
+                Paste
+              </button>
+              <button
+                className="button button-secondary"
+                onClick={() => handleEditSnippet(snippet)}
+              >
+                Edit
+              </button>
+              <button
+                className="button button-danger"
+                onClick={() => setSnippetToDelete(snippet)}
+              >
+                Delete
+              </button>
             </div>
           </li>
         ))}
@@ -148,10 +182,10 @@ const SnippetManagerView: React.FC = () => {
           onConfirm={handleSaveEdit}
         >
           <textarea
-             value={editedContent} 
-             onChange={(e) => setEditedContent(e.target.value)}
-             autoFocus
-             placeholder="Edit snippet content"
+            value={editedContent}
+            onChange={e => setEditedContent(e.target.value)}
+            autoFocus
+            placeholder="Edit snippet content"
           />
         </Modal>
       )}
@@ -165,11 +199,13 @@ const SnippetManagerView: React.FC = () => {
           onConfirm={handleDeleteSnippet}
         >
           <p>Are you sure you want to delete this snippet?</p>
-          <p><strong>{snippetToDelete.content}</strong></p>
+          <p>
+            <strong>{snippetToDelete.content}</strong>
+          </p>
         </Modal>
       )}
     </div>
   );
 };
 
-export default SnippetManagerView; 
+export default SnippetManagerView;

@@ -28,27 +28,41 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeView }) => {
   // };
 
   return (
-    <div className="sidebar-container"> {/* Using class from global.css */}
+    <div className="sidebar-container">
+      {' '}
+      {/* Using class from global.css */}
       <h3>SnipFlow</h3>
       <nav>
         <ul>
           <li>
-            <button onClick={() => onNavigate('clipboard')} className={activeView === 'clipboard' ? 'active' : ''}>
+            <button
+              onClick={() => onNavigate('clipboard')}
+              className={activeView === 'clipboard' ? 'active' : ''}
+            >
               Clipboard Manager
             </button>
           </li>
           <li>
-            <button onClick={() => onNavigate('snippets')} className={activeView === 'snippets' ? 'active' : ''}>
+            <button
+              onClick={() => onNavigate('snippets')}
+              className={activeView === 'snippets' ? 'active' : ''}
+            >
               Snippet Manager
             </button>
           </li>
           <li>
-            <button onClick={() => window.api.openChainManager()} className={activeView === 'chains' ? 'active' : ''}>
+            <button
+              onClick={() => window.api.openChainManager()}
+              className={activeView === 'chains' ? 'active' : ''}
+            >
               Chain Manager
             </button>
           </li>
           <li>
-            <button onClick={() => onNavigate('settings')} className={activeView === 'settings' ? 'active' : ''}>
+            <button
+              onClick={() => onNavigate('settings')}
+              className={activeView === 'settings' ? 'active' : ''}
+            >
               Settings & Debug
             </button>
           </li>
@@ -59,4 +73,4 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeView }) => {
   );
 };
 
-export default Sidebar; 
+export default Sidebar;

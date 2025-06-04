@@ -7,7 +7,10 @@ export interface Snippet {
 
 export interface GenericApi {
   send: (channel: string, ...args: any[]) => void;
-  on: (channel: string, listener: (...args: any[]) => void) => (() => void) | undefined;
+  on: (
+    channel: string,
+    listener: (...args: any[]) => void
+  ) => (() => void) | undefined;
   invoke: (channel: string, ...args: any[]) => Promise<any>;
 }
 
@@ -18,14 +21,17 @@ export interface SnippetApi {
   remove: (id: number) => Promise<void>;
   listChains: () => Promise<Chain[]>;
   createChain: (
-    name: string, 
-    options: ChainOption[], 
-    description?: string | null, 
-    tags?: string[] | null, 
-    layoutData?: string | null, 
+    name: string,
+    options: ChainOption[],
+    description?: string | null,
+    tags?: string[] | null,
+    layoutData?: string | null,
     pinned?: boolean
   ) => Promise<Chain | null>;
-  updateChain: (id: number, data: Partial<Omit<Chain, 'id'>>) => Promise<{success: boolean; error?: string}>;
+  updateChain: (
+    id: number,
+    data: Partial<Omit<Chain, 'id'>>
+  ) => Promise<{ success: boolean; error?: string }>;
   deleteChain: (id: number) => Promise<void>;
   getChainByName: (name: string) => Promise<Chain | null>;
   getChainById: (id: number) => Promise<Chain | null>;
@@ -50,7 +56,9 @@ export interface EventsApi {
   onOverlayShow: (callback: () => void) => void;
   onOverlayHide: (callback: () => void) => void;
   notifyOverlayHidden: () => void;
-  onThemeChanged: (callback: (event: any, theme: 'light' | 'dark' | 'system') => void) => void;
+  onThemeChanged: (
+    callback: (event: any, theme: 'light' | 'dark' | 'system') => void
+  ) => void;
 }
 
 export interface ChainOption {
@@ -115,7 +123,10 @@ export interface ChoiceProvider {
 }
 
 export interface InputProvider {
-  presentInput: (prompt: string, initialValue?: string) => Promise<string | null>;
+  presentInput: (
+    prompt: string,
+    initialValue?: string
+  ) => Promise<string | null>;
 }
 
 // Placeholder type for items that can be pinned to the overlay

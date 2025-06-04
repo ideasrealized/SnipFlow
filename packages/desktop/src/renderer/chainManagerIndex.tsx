@@ -13,5 +13,7 @@ if (rootElement) {
     rootElement
   );
 } else {
-  console.error('Root element #chain-manager-root not found in chainManager.html');
-} 
+  console.error(
+    'Root element #chain-manager-root not found in chainManager.html'
+  );
+}
