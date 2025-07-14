@@ -1,0 +1,96 @@
+appId: com.snipflow.desktop
+productName: SnipFlow
+directories:
+  buildResources: build
+  output: ../../dist
+files:
+  - "dist/**/*"
+  - "node_modules/**/*"
+  - "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
+  - "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
+  - "!node_modules/*.d.ts"
+  - "!node_modules/.bin"
+  - "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
+  - "!.editorconfig"
+  - "!**/._*"
+  - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
+  - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
+  - "!**/{appveyor.yml,.travis.yml,circle.yml}"
+  - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+
+asarUnpack:
+  - "**/*.node"
+  - "**/better-sqlite3/**"
+
+win:
+  target:
+    - target: nsis
+      arch: [x64, ia32]
+    - target: portable
+  icon: build/icon.ico
+  publisherName: "SnipFlow Team"
+  verifyUpdateCodeSignature: false
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: SnipFlow
+
+mac:
+  target:
+    - target: dmg
+    - target: zip
+  icon: build/icon.icns
+  category: public.app-category.productivity
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+linux:
+  target:
+    - target: AppImage
+    - target: deb
+    - target: rpm
+  icon: build/icon.png
+  category: Utility
+  synopsis: "Intelligent text productivity engine"
+  description: "SnipFlow revolutionizes how you work with repetitive text through dynamic snippets and AI-powered automation."
+
+publish:
+  provider: github
+  owner: ideasrealized
+  repo: SnipFlow
+  releaseType: draft
+
+protocols:
+  - name: snipflow
+    schemes:
+      - snipflow
+
+fileAssociations:
+  - ext: snipflow
+    name: SnipFlow Chain File
+    description: SnipFlow Chain Definition
+    icon: build/icon.ico
+
+extraResources:
+  - from: "src/assets"
+    to: "assets"
+    filter: ["**/*"]
+
+afterSign: "scripts/notarize.js"

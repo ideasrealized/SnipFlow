@@ -25,7 +25,7 @@ const ChainVisualizerMiniMap: React.FC<ChainVisualizerMiniMapProps> = ({
   const nodeHMargin = 20;
   const padding = 20;
 
-  const elements: JSX.Element[] = [];
+  const elements: React.ReactElement[] = [];
   let currentY = padding;
 
   // Root chain name display

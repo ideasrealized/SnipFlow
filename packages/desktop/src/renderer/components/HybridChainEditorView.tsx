@@ -1,8 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { Save, Settings, Eye, Pin, PinOff } from 'lucide-react';
 import type { Chain, ChainOption } from '../../types'; // Import ChainOption
-// import ChainNodeListEditor from './ChainNodeListEditor'; // To be replaced
 import ChainOptionsEditor from './ChainOptionsEditor'; // New component
 import ChainVisualizerMiniMap from './ChainVisualizerMiniMap';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { cn } from '../../lib/utils';
 
 interface HybridChainEditorViewProps {
   chainId: number;
@@ -112,81 +117,150 @@ const HybridChainEditorView: React.FC<HybridChainEditorViewProps> = ({ chainId }
     setOptions(newOptions);
   };
 
-  // Inline styles for layout
-  const styles = {
-    container: { display: 'flex', flexDirection: 'column' as 'column', height: '100%', gap: '10px' },
-    metadataForm: { display: 'flex', flexDirection: 'column' as 'column', gap: '8px', paddingBottom: '10px', borderBottom: '1px solid #ccc' },
-    editorAndMinimap: { display: 'flex', flexGrow: 1, gap: '10px', overflow: 'hidden' /* Prevent outer scroll */ },
-    optionEditorContainer: { flexGrow: 3, /* border: '1px solid #eee', */ padding: '0px', overflowY: 'auto' as 'auto' },
-    miniMapContainer: { flexGrow: 1, border: '1px solid #eee', padding: '10px', overflowY: 'auto' as 'auto', background: '#f9f9f9' },
-    label: { fontWeight: 'bold', marginBottom: '4px' },
-    input: { padding: '6px', border: '1px solid #ccc', borderRadius: '4px' }, 
-    textarea: { padding: '6px', border: '1px solid #ccc', borderRadius: '4px', minHeight: '60px' }, // Style for textarea
-    button: { padding: '8px 15px', cursor: 'pointer' },
-    error: { color: 'red' },
-    loading: { fontStyle: 'italic'}
-  };
-
-  if (isLoading) return <p style={styles.loading}>Loading chain details...</p>;
-  if (error && !chain) return <p style={styles.error}>Error: {error}</p>; // Show error if chain couldn't be loaded
-  if (!chain) return <p>Select a chain to view its details.</p>; // Should not happen if chainId is provided and loading finishes
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="loading-spinner mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading chain details...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error && !chain) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="text-error-600 dark:text-error-400">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!chain) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">Select a chain to view its details.</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.metadataForm}>
-        <h3>Edit Chain: {chain.name} (ID: {chain.id})</h3>
-        <div>
-          <label htmlFor="chainName" style={styles.label}>Name:</label>
-          <input 
-            type="text" 
-            id="chainName" 
-            style={styles.input} 
-            value={chainName} 
-            onChange={(e) => setChainName(e.target.value)} 
-          />
+    <div className="flex flex-col h-full">
+      {/* Header with chain metadata */}
+      <div className="border-b border-border bg-card/30 backdrop-blur-sm">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Settings className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Edit Chain</h1>
+                <p className="text-sm text-muted-foreground">ID: {chain.id}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsPinned(!isPinned)}
+                className={cn(isPinned && "bg-primary/10 border-primary/20")}
+              >
+                {isPinned ? (
+                  <><PinOff className="w-4 h-4 mr-1" />Unpin</>
+                ) : (
+                  <><Pin className="w-4 h-4 mr-1" />Pin</>
+                )}
+              </Button>
+              <Button
+                onClick={handleSaveChanges}
+                disabled={isSaving || isLoading}
+                className="no-drag"
+              >
+                <Save className="w-4 h-4 mr-1" />
+                {isSaving ? 'Saving...' : 'Save Chain'}
+              </Button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="chainName" className="text-sm font-medium">Chain Name</label>
+              <Input
+                id="chainName"
+                value={chainName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setChainName(e.target.value)}
+                placeholder="Enter chain name..."
+                className="no-drag"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="chainDescription" className="text-sm font-medium">Description</label>
+              <Textarea
+                id="chainDescription"
+                value={chainDescription}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setChainDescription(e.target.value)}
+                placeholder="Enter chain description..."
+                className="no-drag min-h-[60px]"
+              />
+            </div>
+          </div>
+          
+          {error && (
+            <div className="mt-4 p-3 bg-error-50 dark:bg-error-900/20 border border-error-200 dark:border-error-800 rounded-lg">
+              <p className="text-sm text-error-600 dark:text-error-400">Error during save: {error}</p>
+            </div>
+          )}
         </div>
-        <div>
-          <label htmlFor="chainDescription" style={styles.label}>Description:</label>
-          <textarea 
-            id="chainDescription" 
-            style={styles.textarea} 
-            value={chainDescription} 
-            onChange={(e) => setChainDescription(e.target.value)} 
-          />
-        </div>
-        <div>
-          <label htmlFor="chainPinned" style={{ ...styles.label, display: 'flex', alignItems: 'center' }}>
-            <input 
-              type="checkbox" 
-              id="chainPinned" 
-              style={{ marginRight: '8px' }} 
-              checked={isPinned} 
-              onChange={(e) => setIsPinned(e.target.checked)} 
-            />
-            Pinned
-          </label>
-        </div>
-        {/* Tag editor will go here later */}
-        <button onClick={handleSaveChanges} style={styles.button} disabled={isSaving || isLoading}>
-          {isSaving ? 'Saving...' : 'Save Chain'}
-        </button>
-        {error && <p style={styles.error}>Error during save: {error}</p>} {/* Show save-specific errors here */}
       </div>
 
-      <div style={styles.editorAndMinimap}>
-        <div style={styles.optionEditorContainer}>
-          {/* <h4>Nodes</h4> // Title can be part of ChainNodeListEditor itself or removed for cleaner UI */}
-          <ChainOptionsEditor
-            key={chain?.id || 'no-chain-selected'}
-            initialOptions={options}
-            onOptionsChange={handleOptionsChange}
-          />
-          {/* <pre>{JSON.stringify(nodes, null, 2)}</pre> */}
+      {/* Main content area with options editor and visualizer */}
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Settings className="w-5 h-5 mr-2" />
+                  Chain Options
+                </CardTitle>
+                <CardDescription>
+                  Configure the options and actions for this chain
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChainOptionsEditor
+                  key={chain?.id || 'no-chain-selected'}
+                  initialOptions={options}
+                  onOptionsChange={handleOptionsChange}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
-        <div style={styles.miniMapContainer}>
-          {/* <h4>Mini-Map (Visualizer)</h4> // Title can be part of the component itself */}
-          <ChainVisualizerMiniMap currentChainOptions={options} currentChainName={chainName} />
-          {/* <p>(ChainVisualizerMiniMap Placeholder)</p> */}
+        
+        <div className="w-80 border-l border-border bg-card/30 backdrop-blur-sm overflow-y-auto">
+          <div className="p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Eye className="w-5 h-5 mr-2" />
+                  Chain Visualizer
+                </CardTitle>
+                <CardDescription>
+                  Visual representation of your chain structure
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChainVisualizerMiniMap 
+                  currentChainOptions={options} 
+                  currentChainName={chainName} 
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

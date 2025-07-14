@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-// import { randomUUID } from 'crypto'; // Removed Node crypto import
-import ChainOptionItem from './ChainOptionItem'; // Ensured import path is correct
+import { Plus, GripVertical } from 'lucide-react';
+import ChainOptionItem from './ChainOptionItem';
 import type { ChainOption } from '../../types';
-// import logger from '../../utils/logger'; // Cannot use main process logger directly
+import { Button } from '../../components/ui/button';
+import { cn } from '../../lib/utils';
 
 interface ChainOptionsEditorProps {
   initialOptions: ChainOption[];
