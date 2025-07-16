@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Snippet } from '../../../types'; // Assuming types are correctly pathed
 import Modal from '../Modal'; // Import the Modal component
+import CollapsibleSection from '../CollapsibleSection'; // Import the CollapsibleSection component
 
 const SnippetManagerView: React.FC = () => {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
@@ -125,19 +126,26 @@ const SnippetManagerView: React.FC = () => {
         <p className="empty-state-message">No snippets yet. Add one above!</p>
       )}
 
-      <ul className="item-list">
-        {snippets.map((snippet) => (
-          <li key={snippet.id} className="item-list-item">
-            <span className="item-content">{snippet.content}</span>
-            <div className="item-actions">
-              <button className="button button-secondary" onClick={() => handleCopySnippet(snippet.content)}>Copy</button>
-              <button className="button button-secondary" onClick={() => handlePasteSnippet(snippet.content)}>Paste</button>
-              <button className="button button-secondary" onClick={() => handleEditSnippet(snippet)}>Edit</button>
-              <button className="button button-danger" onClick={() => setSnippetToDelete(snippet)}>Delete</button>
+      <CollapsibleSection 
+        title="All Snippets" 
+        icon="📋"
+        count={snippets.length}
+        defaultExpanded={true}
+      >
+        <div className="snippet-list">
+          {snippets.map((snippet) => (
+            <div key={snippet.id} className={`snippet-card ${snippet.isPinned ? 'pinned' : ''}`}>
+              <div className="snippet-content">{snippet.content}</div>
+              <div className="item-actions">
+                <button className="button button-secondary" onClick={() => handleCopySnippet(snippet.content)}>Copy</button>
+                <button className="button button-secondary" onClick={() => handlePasteSnippet(snippet.content)}>Paste</button>
+                <button className="button button-secondary" onClick={() => handleEditSnippet(snippet)}>Edit</button>
+                <button className="button button-danger" onClick={() => setSnippetToDelete(snippet)}>Delete</button>
+              </div>
             </div>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </div>
+      </CollapsibleSection>
 
       {editingSnippet && (
         <Modal

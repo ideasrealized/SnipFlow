@@ -48,6 +48,12 @@ const ChainCard: React.FC<ChainCardProps> = ({
     e.stopPropagation();
     onSelect(chain.id);
   };
+  
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Open chain editor on double-click
+    onSelect(chain.id);
+  };
 
   const handleActionClick = (e: React.MouseEvent, action: () => void) => {
     e.stopPropagation();
@@ -162,6 +168,7 @@ const ChainCard: React.FC<ChainCardProps> = ({
     <div
       style={cardStyles}
       onClick={handleCardClick}
+      onDoubleClick={handleDoubleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);

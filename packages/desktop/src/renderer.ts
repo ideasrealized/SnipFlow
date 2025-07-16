@@ -548,6 +548,58 @@ form.addEventListener('submit', async e => {
   }
 });
 
+// Welcome modal functionality
+function showWelcomeModal() {
+  const modal = document.getElementById('welcome-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    
+    // Close button
+    const closeBtn = document.getElementById('welcome-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+        // Set flag to not show again
+        localStorage.setItem('snipflow-welcome-shown', 'true');
+      });
+    }
+    
+    // Settings button
+    const settingsBtn = document.getElementById('welcome-settings');
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+        // Scroll to settings section
+        const settingsSection = document.querySelector('.settings-diagnostics-section');
+        if (settingsSection) {
+          settingsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        localStorage.setItem('snipflow-welcome-shown', 'true');
+      });
+    }
+  }
+}
+
+// Show welcome modal on first visit
+if (!localStorage.getItem('snipflow-welcome-shown')) {
+  setTimeout(() => {
+    showWelcomeModal();
+  }, 1000);
+}
+
+// Add button to show welcome modal again
+const welcomeButton = document.createElement('button');
+welcomeButton.textContent = '❓ Show Welcome';
+welcomeButton.className = 'secondary';
+welcomeButton.style.cssText = 'margin-top: 10px; float: right;';
+welcomeButton.addEventListener('click', showWelcomeModal);
+
+// Add welcome button to settings section
+const settingsSection = document.querySelector('.settings-diagnostics-section');
+if (settingsSection) {
+  settingsSection.appendChild(welcomeButton);
+}
+
 openNewChainManagerBtn?.addEventListener('click', () => {
   if (window.api && typeof window.api.openChainManager === 'function') {
     window.api.openChainManager();

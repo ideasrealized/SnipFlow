@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SnipFlow Edge Indicator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        }
+        
+        .edge-indicator {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(74, 144, 226, 0.8) 0%, rgba(90, 163, 240, 0.8) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(74, 144, 226, 0.4);
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .edge-indicator.visible {
+            opacity: 1;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .edge-indicator.left-center,
+        .edge-indicator.right-center {
+            width: 8px;
+            height: 100px;
+            writing-mode: vertical-lr;
+            text-orientation: mixed;
+        }
+        
+        .edge-indicator.top-left,
+        .edge-indicator.top-right,
+        .edge-indicator.bottom-left,
+        .edge-indicator.bottom-right {
+            width: 100px;
+            height: 8px;
+        }
+        
+        .edge-indicator::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            animation: dot-pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% { 
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+        
+        @keyframes dot-pulse {
+            0%, 100% { 
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            50% { 
+                opacity: 0.5;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+        }
+        
+        .edge-indicator.left-center {
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .edge-indicator.right-center {
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .edge-indicator.top-left {
+            top: 0;
+            left: 0;
+        }
+        
+        .edge-indicator.top-right {
+            top: 0;
+            right: 0;
+        }
+        
+        .edge-indicator.bottom-left {
+            bottom: 0;
+            left: 0;
+        }
+        
+        .edge-indicator.bottom-right {
+            bottom: 0;
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="edge-indicator" class="edge-indicator">
+        <span class="hover-text">Hover</span>
+    </div>
+    
+    <script>
+        const indicator = document.getElementById('edge-indicator');
+        
+        // Listen for position updates from main process
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'updatePosition') {
+                const { position, visible } = event.data;
+                
+                // Remove all position classes
+                indicator.className = 'edge-indicator';
+                
+                // Add new position class
+                if (position) {
+                    indicator.classList.add(position);
+                }
+                
+                // Show/hide indicator
+                if (visible) {
+                    indicator.classList.add('visible');
+                } else {
+                    indicator.classList.remove('visible');
+                }
+            }
+        });
+        
+        // Initial setup
+        indicator.classList.add('left-center');
+        
+        // Auto-show after a delay
+        setTimeout(() => {
+            indicator.classList.add('visible');
+        }, 1000);
+    </script>
+</body>
+</html>

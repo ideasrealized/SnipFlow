@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { ClipboardEntry } from '../../../types'; // Assuming types are correctly pathed
+import CollapsibleSection from '../CollapsibleSection';
 
 // Basic styling - consider moving to a CSS file or using a styling library
 const viewStyle: React.CSSProperties = { padding: '20px', fontFamily: 'Arial, sans-serif' };
@@ -105,31 +106,59 @@ const ClipboardManagerView: React.FC = () => {
     );
   }
 
+  const pinnedItems = clipboardHistory.filter(item => item.pinned);
+  const recentItems = clipboardHistory.filter(item => !item.pinned);
+
+  const renderClipboardItem = (item: ClipboardEntry) => (
+    <li key={item.id} className="item-list-item">
+      <span className="item-content">{item.content}</span>
+      <span className="item-timestamp">{new Date(item.timestamp).toLocaleString()}</span>
+      <div className="item-actions">
+        <button className="button button-secondary" onClick={() => handleCopy(item.content)}>Copy</button>
+        <button className="button button-secondary" onClick={() => handlePaste(item.content)}>Paste</button>
+        <button 
+          className={`button ${item.pinned ? 'button-primary' : 'button-secondary'}`} 
+          onClick={() => handlePinToggle(item)}
+        >
+          {item.pinned ? 'Unpin' : 'Pin'}
+        </button>
+        <button className="button button-secondary" onClick={() => handleAddAsSnippet(item.content)}>Add as Snippet</button>
+      </div>
+    </li>
+  );
+
   return (
     <div className="view-container">
       <h2>Clipboard Manager</h2>
       {clipboardHistory.length === 0 && !isLoading && (
         <p className="empty-state-message">Clipboard history is empty.</p>
       )}
-      <ul className="item-list">
-        {clipboardHistory.map((item) => (
-          <li key={item.id} className="item-list-item">
-            <span className="item-content">{item.content}</span>
-            <span className="item-timestamp">{new Date(item.timestamp).toLocaleString()}</span>
-            <div className="item-actions">
-              <button className="button button-secondary" onClick={() => handleCopy(item.content)}>Copy</button>
-              <button className="button button-secondary" onClick={() => handlePaste(item.content)}>Paste</button>
-              <button 
-                className={`button ${item.pinned ? 'button-primary' : 'button-secondary'}`} 
-                onClick={() => handlePinToggle(item)}
-              >
-                {item.pinned ? 'Unpin' : 'Pin'}
-              </button>
-              <button className="button button-secondary" onClick={() => handleAddAsSnippet(item.content)}>Add as Snippet</button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      
+      {pinnedItems.length > 0 && (
+        <CollapsibleSection 
+          title="Pinned Items" 
+          icon="📌"
+          count={pinnedItems.length}
+          defaultExpanded={true}
+        >
+          <ul className="item-list">
+            {pinnedItems.map(renderClipboardItem)}
+          </ul>
+        </CollapsibleSection>
+      )}
+      
+      {recentItems.length > 0 && (
+        <CollapsibleSection 
+          title="Recent Items" 
+          icon="🕐"
+          count={recentItems.length}
+          defaultExpanded={true}
+        >
+          <ul className="item-list">
+            {recentItems.map(renderClipboardItem)}
+          </ul>
+        </CollapsibleSection>
+      )}
     </div>
   );
 };

@@ -28,19 +28,31 @@ const ChainManagerView: React.FC = () => {
               <Link2 className="w-5 h-5 text-primary" />
               <h1 className="text-xl font-bold">Chain Manager</h1>
             </div>
-            <Button size="sm" className="no-drag">
+            <Button 
+              size="sm" 
+              className="no-drag"
+              onClick={() => {
+                // Trigger the create chain function in ChainListPanel
+                const createButtons = document.querySelectorAll('button');
+                createButtons.forEach(btn => {
+                  if (btn.textContent?.includes('Create New Chain')) {
+                    btn.click();
+                  }
+                });
+              }}
+            >
               <Plus className="w-4 h-4 mr-1" />
               New Chain
             </Button>
           </div>
         </div>
         
-        <div className="overflow-y-auto h-[calc(100vh-80px)] scrollbar-thin">
-          <ChainListPanel 
-            onSelectChain={handleChainSelected} 
-            selectedChainId={selectedChainId}
-          />
-        </div>
+      <div className="overflow-y-auto h-[calc(100vh-88px)]" style={{ scrollbarWidth: 'thin', scrollbarColor: '#4a90e2 #1e293b' }}>
+        <ChainListPanel 
+          onSelectChain={handleChainSelected} 
+          selectedChainId={selectedChainId}
+        />
+      </div>
       </div>
 
       {/* Main Content Area */}

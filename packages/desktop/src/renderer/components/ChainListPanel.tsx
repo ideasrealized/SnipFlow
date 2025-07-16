@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import type { Chain, ChainOption } from '../../types';
 import ChainCard from './ChainCard';
+import CollapsibleChainList from './CollapsibleChainList';
 
 interface ChainListPanelProps {
   onSelectChain: (id: number) => void;
@@ -31,8 +32,12 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain, selected
 
   const handleCreateChain = async () => {
     try {
+      // Generate a unique name with timestamp
+      const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+      const uniqueName = `New Chain ${timestamp}`;
+      
       const newChain = await window.api.createChain(
-        'New Chain',
+        uniqueName,
         [
           {
             id: crypto.randomUUID(),
@@ -193,6 +198,7 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain, selected
     padding: '16px',
     borderRadius: '12px',
     border: '1px solid #1E293B',
+    overflowY: 'auto',
   };
 
   const headerStyles: React.CSSProperties = {
@@ -222,15 +228,18 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain, selected
   const createButtonStyles: React.CSSProperties = {
     width: '100%',
     padding: '12px 16px',
-    background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+    background: 'linear-gradient(135deg, #4a90e2 0%, #357abd 100%)',
     border: 'none',
     borderRadius: '8px',
     color: '#FFFFFF',
     fontSize: '14px',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
     marginBottom: '16px',
+    boxShadow: '0 4px 12px rgba(74, 144, 226, 0.3)',
+    position: 'relative',
+    overflow: 'hidden',
   };
 
   const exportButtonStyles: React.CSSProperties = {
@@ -251,6 +260,9 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain, selected
     flex: 1,
     overflowY: 'auto' as const,
     paddingRight: '4px',
+    maxHeight: 'calc(100% - 200px)',
+    scrollbarWidth: 'thin' as const,
+    scrollbarColor: '#4a90e2 #1e293b',
   };
 
   const emptyStateStyles: React.CSSProperties = {
@@ -373,18 +385,63 @@ const ChainListPanel: React.FC<ChainListPanelProps> = ({ onSelectChain, selected
             </p>
           </div>
         ) : (
-          filteredChains.map((chain) => (
-            <ChainCard
-              key={chain.id}
-              chain={chain}
-              isSelected={selectedChainId === chain.id}
-              onSelect={onSelectChain}
-              onDelete={handleDeleteChain}
-              onToggleStarter={handleToggleStarter}
-              onTogglePin={handleTogglePin}
-              onExport={handleExportChain}
-            />
-          ))
+          <>
+            {/* Categorize chains */}
+            {(() => {
+              const starterChains = filteredChains.filter(c => c.isStarterChain);
+              const pinnedChains = filteredChains.filter(c => c.isPinned && !c.isStarterChain);
+              const regularChains = filteredChains.filter(c => !c.isPinned && !c.isStarterChain);
+              
+              return (
+                <>
+                  {starterChains.length > 0 && (
+                    <CollapsibleChainList
+                      title="Starter Chains"
+                      icon="🚀"
+                      chains={starterChains}
+                      selectedChainId={selectedChainId}
+                      onSelectChain={onSelectChain}
+                      onDeleteChain={handleDeleteChain}
+                      onToggleStarter={handleToggleStarter}
+                      onTogglePin={handleTogglePin}
+                      onExportChain={handleExportChain}
+                      defaultExpanded={true}
+                    />
+                  )}
+                  
+                  {pinnedChains.length > 0 && (
+                    <CollapsibleChainList
+                      title="Pinned Chains"
+                      icon="📌"
+                      chains={pinnedChains}
+                      selectedChainId={selectedChainId}
+                      onSelectChain={onSelectChain}
+                      onDeleteChain={handleDeleteChain}
+                      onToggleStarter={handleToggleStarter}
+                      onTogglePin={handleTogglePin}
+                      onExportChain={handleExportChain}
+                      defaultExpanded={true}
+                    />
+                  )}
+                  
+                  {regularChains.length > 0 && (
+                    <CollapsibleChainList
+                      title="All Chains"
+                      icon="🔗"
+                      chains={regularChains}
+                      selectedChainId={selectedChainId}
+                      onSelectChain={onSelectChain}
+                      onDeleteChain={handleDeleteChain}
+                      onToggleStarter={handleToggleStarter}
+                      onTogglePin={handleTogglePin}
+                      onExportChain={handleExportChain}
+                      defaultExpanded={regularChains.length < 10}
+                    />
+                  )}
+                </>
+              );
+            })()}
+          </>
         )}
       </div>
     </div>

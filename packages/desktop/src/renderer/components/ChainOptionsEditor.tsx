@@ -63,15 +63,51 @@ const ChainOptionsEditor: React.FC<ChainOptionsEditorProps> = ({ initialOptions,
     onOptionsChange(newOptions);
   };
 
-  const styles = {
-    container: { border: '1px solid #444', borderRadius: '4px', padding: '10px', background: '#2d2d2d' },
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { 
+      border: '1px solid rgba(255, 255, 255, 0.25)', 
+      borderRadius: '12px', 
+      padding: '20px', 
+      background: 'rgba(20, 20, 20, 0.98)',
+      backdropFilter: 'blur(24px) saturate(200%)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
+      position: 'relative',
+      overflow: 'hidden'
+    },
     list: { minHeight: '100px' }, // For better dnd experience with empty list
-    addButton: { marginBottom: '10px', padding: '6px 12px', background: '#4a90e2', color: 'white', border: 'none', borderRadius: '4px' }
+    addButton: { 
+      marginBottom: '16px', 
+      padding: '10px 20px', 
+      background: 'linear-gradient(135deg, #4a90e2 0%, #357abd 100%)', 
+      color: 'white', 
+      border: 'none', 
+      borderRadius: '8px',
+      fontWeight: 600,
+      fontSize: '14px',
+      cursor: 'pointer',
+      transition: 'all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      boxShadow: '0 4px 12px rgba(74, 144, 226, 0.3)',
+      position: 'relative',
+      overflow: 'hidden'
+    }
   };
 
   return (
     <div style={styles.container}>
-      <button onClick={handleAddOption} style={styles.addButton}>+ Add Option</button>
+      <button 
+        onClick={handleAddOption} 
+        style={styles.addButton}
+        onMouseOver={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 6px 20px rgba(74, 144, 226, 0.4)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(74, 144, 226, 0.3)';
+        }}
+      >
+        + Add Option
+      </button>
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="optionsList">
           {(provided) => (
@@ -91,11 +127,16 @@ const ChainOptionsEditor: React.FC<ChainOptionsEditorProps> = ({ initialOptions,
                         {...providedDraggable.dragHandleProps}
                         style={{
                           userSelect: 'none',
-                          padding: '8px',
-                          margin: '0 0 8px 0',
-                          backgroundColor: '#3a3a3a',
-                          border: '1px solid #555',
-                          borderRadius: '4px',
+                          padding: '16px',
+                          margin: '0 0 12px 0',
+                          background: 'rgba(20, 20, 20, 0.98)',
+                          backdropFilter: 'blur(24px) saturate(200%)',
+                          border: '1px solid rgba(255, 255, 255, 0.25)',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                          transition: 'all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                          position: 'relative',
+                          overflow: 'hidden',
                           ...providedDraggable.draggableProps.style,
                         }}
                       >

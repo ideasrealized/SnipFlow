@@ -4,15 +4,14 @@
   "description": "SnipFlow Desktop Application",
   "main": "dist/main.js",
   "scripts": {
-    "_predev_or_prebuild": "pnpm run clean && tsc && node ./esbuild.renderer.js && node -e \"const fs = require('fs'); const path = require('path'); fs.copyFileSync(path.join('src', 'index.html'), path.join('dist', 'index.html')); fs.copyFileSync(path.join('src', 'overlay.html'), path.join('dist', 'overlay.html')); fs.copyFileSync(path.join('src', 'chainManager.html'), path.join('dist', 'chainManager.html')); fs.cpSync(path.join('src', 'assets'), path.join('dist', 'assets'), {recursive:true,force:true});\"",
+    "_predev_or_prebuild": "npm run clean && tsc && node ./esbuild.renderer.js && node -e \"const fs = require('fs'); const path = require('path'); fs.copyFileSync(path.join('src', 'index.html'), path.join('dist', 'index.html')); fs.copyFileSync(path.join('src', 'overlay.html'), path.join('dist', 'overlay.html')); fs.copyFileSync(path.join('src', 'chainManager.html'), path.join('dist', 'chainManager.html')); fs.copyFileSync(path.join('src', 'index-react.html'), path.join('dist', 'index-react.html')); fs.copyFileSync(path.join('src', 'settings-simple.html'), path.join('dist', 'settings-simple.html')); fs.cpSync(path.join('src', 'assets'), path.join('dist', 'assets'), {recursive:true,force:true});\"",
     "postinstall": "electron-rebuild",
     "rebuild": "electron-rebuild",
-    "dev": "pnpm run _predev_or_prebuild && electron dist/main.js",
-    "build": "pnpm run _predev_or_prebuild",
+    "dev": "npm run _predev_or_prebuild && electron dist/main.js",
+    "build": "npm run _predev_or_prebuild",
     "clean": "rimraf dist",
     "type-check": "tsc --noEmit",
     "test": "pnpm run build && mocha dist/test/db.test.js",
-    "start": "tsc && electron dist/main.js",
     "package": "tsc && electron-builder"
   },
   "devDependencies": {

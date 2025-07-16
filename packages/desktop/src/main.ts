@@ -157,7 +157,7 @@ function startMouseTracking(currentSettings: Settings) {
       hoverTimeout = setTimeout(() => {
           const latestCursorPos = screen.getCursorScreenPoint();
           const stillInZone = isCursorInTriggerZone(latestCursorPos, position, triggerSize, workArea);
-          const latestOverlayBounds = overlayWindow && overlayWindow.getBounds();
+          const latestOverlayBounds = overlayWindow && overlayWindow.isVisible() ? overlayWindow.getBounds() : null;
           const stillNotOverOverlay = !isMouseOverOverlayWindow(latestCursorPos, latestOverlayBounds);
 
           if (isHovering && overlayWindow && stillInZone && stillNotOverOverlay && overlayState === 'showing') {
@@ -312,7 +312,7 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true },
   });
   if (process.env.NODE_ENV === 'development') mainWindow.webContents.openDevTools();
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, 'index-react.html'));
   mainWindow.webContents.on('did-finish-load', () => logger.info('Main window loaded.'));
   mainWindow.webContents.on('render-process-gone', (e,d) => logger.error('Main render gone:',d));
   mainWindow.on('focus', () => logger.info('Main window focus.'));
@@ -1056,6 +1056,20 @@ function setupIpcHandlers() {
     chainManagerWindow.on('closed', () => {
       chainManagerWindow = null;
     });
+  });
+
+  // Test overlay visibility handler
+  ipcMain.on('test-show-overlay', () => {
+    logger.info('[main.ts] IPC: test-show-overlay received');
+    if (overlayWindow) {
+      positionOverlayAtPosition('left-center');
+      overlayWindow.show();
+      overlayWindow.webContents.send('overlay:show', { position: 'left-center' });
+      overlayState = 'visible';
+      logger.info('[main.ts] Test overlay shown successfully');
+    } else {
+      logger.error('[main.ts] No overlay window available for test');
+    }
   });
 
   // Insert snippet handler - for overlay text insertion

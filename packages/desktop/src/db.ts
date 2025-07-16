@@ -782,7 +782,16 @@ const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
   opacity: 0.95,
   blur: 5,
   y: 50, // Default Y position (e.g. percentage or initial pixel value)
-  side: 'left' // Default side - changed to left for Starter Chains
+  side: 'left', // Default side - changed to left for Starter Chains
+  // Grid customization defaults
+  gridCols: 2,
+  gridRows: 3,
+  nodeWidth: 180,
+  nodeHeight: 90,
+  nodeStyle: 'rounded',
+  // Performance settings
+  animationSpeed: 'fast',
+  preloadContent: true
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -792,6 +801,14 @@ const DEFAULT_SETTINGS: Settings = {
   maxHistory: 100,
   edgeHover: DEFAULT_EDGE_HOVER_SETTINGS,
   overlay: DEFAULT_OVERLAY_SETTINGS, // Contains y and side now
+  advancedMode: {
+    enabled: false,
+    codingMode: false,
+    syntaxHighlighting: false,
+    codeSnippetHeaders: false,
+    templateEngine: 'basic',
+    performanceMode: 'balanced'
+  }
 };
 
 export function getSettings(): Settings {

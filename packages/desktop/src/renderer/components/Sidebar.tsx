@@ -6,6 +6,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeView }) => {
+  console.log('Sidebar rendered with activeView:', activeView);
   // Inline styles removed, will use classes from global.css
   // const sidebarStyle: React.CSSProperties = {
   //   width: '200px',
@@ -43,12 +44,20 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeView }) => {
             </button>
           </li>
           <li>
-            <button onClick={() => window.api.openChainManager()} className={activeView === 'chains' ? 'active' : ''}>
+<button onClick={() => onNavigate('chains')} className={activeView === 'chains' ? 'active' : ''}>
               Chain Manager
             </button>
           </li>
           <li>
-            <button onClick={() => onNavigate('settings')} className={activeView === 'settings' ? 'active' : ''}>
+            <button onClick={() => {
+              console.log('🚨 SETTINGS BUTTON CLICKED!');
+              console.log('🚨 Current activeView:', activeView);
+              console.log('🚨 onNavigate function:', onNavigate);
+              console.log('🚨 About to call onNavigate with settings');
+              onNavigate('settings');
+              console.log('🚨 onNavigate(settings) called successfully');
+              console.log('🚨 Expected activeView should change to: settings');
+            }} className={activeView === 'settings' ? 'active' : ''}>
               Settings & Debug
             </button>
           </li>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';" />
+    <title>SnipFlow Desktop</title>
+    <link rel="stylesheet" href="./assets/styles/overlay-aesthetic.css">
+    <style>
+      /* Base styles for the React app */
+      html, body, #root {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+      }
+      
+      /* Loading state */
+      #loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-size: 18px;
+        color: #4a90e2;
+      }
+      
+      /* Hide loading when React app loads */
+      #root:not(:empty) + #loading {
+        display: none;
+      }
+      
+      /* React app specific overrides for overlay aesthetic */
+      .app-container {
+        display: flex;
+        height: 100vh;
+        background: transparent;
+      }
+      
+      .content-area {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: transparent;
+      }
+      
+      /* Make sure text content is visible */
+      .view-container h2 {
+        color: #4a90e2 !important;
+        margin-bottom: 20px;
+      }
+      
+      .view-container p {
+        color: #e0e0e0 !important;
+      }
+      
+      /* Loading and error states */
+      .view-container .empty-state-message {
+        color: #888 !important;
+        text-align: center;
+        padding: 20px;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="loading">Loading SnipFlow...</div>
+    <script>
+      console.log('🚀 INLINE SCRIPT EXECUTED - HTML loaded successfully');
+      console.log('🚀 Document ready state:', document.readyState);
+      console.log('🚀 Root element exists:', !!document.getElementById('root'));
+      console.log('🚀 Loading element exists:', !!document.getElementById('loading'));
+      
+      // Test if we can access window.api
+      console.log('🚀 Window API available:', typeof window.api);
+      
+      // Add a visible test element
+      const testElement = document.createElement('div');
+      testElement.id = 'script-test';
+      testElement.style.cssText = 'position: fixed; top: 10px; right: 10px; background: green; color: white; padding: 10px; z-index: 9999; font-size: 12px;';
+      testElement.textContent = 'SCRIPTS WORKING';
+      document.body.appendChild(testElement);
+      
+      console.log('🚀 Test element added to document');
+    </script>
+    <script>
+      console.log('🚀 About to load bundle.js...');
+      
+      // Test if the bundle.js file exists by trying to fetch it
+      fetch('./renderer/bundle.js')
+        .then(response => {
+          console.log('🚀 Bundle.js fetch response:', response.status, response.statusText);
+          if (response.ok) {
+            console.log('🚀 Bundle.js file exists and is accessible');
+          } else {
+            console.error('❌ Bundle.js file fetch failed:', response.status, response.statusText);
+          }
+        })
+        .catch(error => {
+          console.error('❌ Bundle.js file fetch error:', error);
+        });
+    </script>
+    <script defer src="./renderer/bundle.js" onload="console.log('🚀 Bundle.js loaded successfully')" onerror="console.error('❌ Bundle.js failed to load')"></script>
+    <script>
+      console.log('🚀 SECOND INLINE SCRIPT - After bundle.js script tag');
+    </script>
+  </body>
+</html>

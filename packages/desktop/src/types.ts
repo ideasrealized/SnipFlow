@@ -106,6 +106,15 @@ export interface OverlaySettings {
   blur: number;
   y?: number;
   side?: 'left' | 'right';
+  // Grid customization
+  gridCols?: number;
+  gridRows?: number;
+  nodeWidth?: number;
+  nodeHeight?: number;
+  nodeStyle?: 'square' | 'rounded' | 'circle' | 'hexagon';
+  // Performance settings
+  animationSpeed?: 'instant' | 'fast' | 'normal' | 'slow';
+  preloadContent?: boolean;
 }
 
 export interface Settings {
@@ -115,6 +124,17 @@ export interface Settings {
   maxHistory: number;
   edgeHover: EdgeHoverSettings;
   overlay: OverlaySettings;
+  // Advanced mode settings
+  advancedMode?: AdvancedModeSettings;
+}
+
+export interface AdvancedModeSettings {
+  enabled: boolean;
+  codingMode: boolean;
+  syntaxHighlighting: boolean;
+  codeSnippetHeaders: boolean;
+  templateEngine: 'basic' | 'advanced';
+  performanceMode: 'balanced' | 'speed' | 'quality';
 }
 
 export interface Choice {

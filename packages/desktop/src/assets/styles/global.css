@@ -1,16 +1,27 @@
-/* Global styles for SnipFlow Desktop */
+/* Global styles for SnipFlow Desktop - Overlay Node Aesthetic */
+
+:root {
+  --node-bg: rgba(20, 20, 20, 0.98);
+  --node-bg-hover: rgba(30, 30, 30, 0.98);
+  --node-border: rgba(255, 255, 255, 0.25);
+  --node-border-hover: rgba(74, 144, 226, 0.8);
+  --node-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 0 80px rgba(0, 0, 0, 0.4);
+  --node-shadow-hover: 0 20px 40px rgba(74, 144, 226, 0.4), 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(74, 144, 226, 0.5);
+  --node-radius: 12px;
+  --transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 
 body {
-  /* Styles from the previous index.html minimal body style */
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-  background-color: #1a1a1a;
-  color: #e0e0e0;
+  background: transparent;
+  color: #fff;
   box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
 }
 
 *, *::before, *::after {
@@ -35,10 +46,11 @@ body {
   width: 220px; /* Slightly wider for comfort */
   min-width: 200px;
   padding: 20px;
-  border-right: 1px solid #333; /* Darker border */
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   height: 100vh;
-  background-color: #252526; /* Darker sidebar */
+  background-color: rgba(30, 30, 30, 0.95);
   color: #ccc;
+  backdrop-filter: blur(10px);
 }
 
 .sidebar-container h3 {
@@ -48,11 +60,48 @@ body {
   font-size: 1.5em;
 }
 
+/* Sidebar navigation styles */
+.sidebar-container nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-container nav li {
+  margin-bottom: 8px;
+}
+
+.sidebar-container nav button {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background-color: transparent;
+  color: #ccc;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sidebar-container nav button:hover {
+  background-color: rgba(74, 144, 226, 0.1);
+  color: #4a90e2;
+}
+
+.sidebar-container nav button.active {
+  background-color: rgba(74, 144, 226, 0.2);
+  color: #4a90e2;
+  font-weight: 600;
+}
+
 .content-area {
   flex-grow: 1;
   padding: 20px;
   overflow-y: auto;
-  background-color: #1e1e1e; /* Slightly different dark for content */
+  background-color: transparent;
 }
 
 /* Form Elements */
@@ -87,14 +136,16 @@ textarea {
 /* Button Styles */
 button, .button {
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 10px 16px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
   text-align: center;
   margin-right: 8px; /* Default margin for buttons next to each other */
   margin-bottom: 8px; /* Default margin for stacked buttons */
-  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: blur(8px);
 }
 
 button:last-child, .button:last-child {
@@ -102,30 +153,40 @@ button:last-child, .button:last-child {
 }
 
 .button-primary {
-  background-color: #4a90e2;
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
   color: white;
+  border: 1px solid rgba(74, 144, 226, 0.3);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
 }
 .button-primary:hover {
-  background-color: #357abd;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, #5aa3f0 0%, #4a90e2 100%);
+  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
+  transform: translateY(-2px);
 }
 
 .button-secondary {
-  background-color: #6c757d; /* Bootstrap secondary color */
-  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
 }
 .button-secondary:hover {
-  background-color: #5a6268;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+  border-color: rgba(74, 144, 226, 0.5);
 }
 
 .button-danger {
-  background-color: #dc3545; /* Bootstrap danger color */
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
   color: white;
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 .button-danger:hover {
-  background-color: #c82333;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, #e74c3c 0%, #dc3545 100%);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+  transform: translateY(-2px);
 }
 
 /* List Styles */
@@ -135,20 +196,28 @@ button:last-child, .button:last-child {
 }
 
 .item-list-item {
-  background-color: #2d2d2d; /* Darker item background */
-  border: 1px solid #404040;
-  border-radius: 4px;
-  padding: 12px 15px;
-  margin-bottom: 10px;
+  background: rgba(20, 20, 20, 0.98);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 20px 16px;
+  margin-bottom: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.8), 
+    0 2px 8px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 }
 
 .item-list-item:hover {
-  background-color: #3a3a3a;
-  border-color: #555;
+  background: rgba(30, 30, 30, 0.98);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(74, 144, 226, 0.4), 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(74, 144, 226, 0.5);
+  border-color: rgba(74, 144, 226, 0.8);
 }
 
 .item-content {
@@ -222,14 +291,18 @@ button:last-child, .button:last-child {
 
 /* Modal Styles */
 .modal-content {
-  background-color: #2d2d2d; /* Consistent with item backgrounds */
+  background: rgba(20, 20, 20, 0.98);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
   color: #e0e0e0;
   padding: 25px;
-  border-radius: 8px;
+  border-radius: 16px;
   min-width: 320px;
   max-width: 500px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  border: 1px solid #404040;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .modal-header {
@@ -292,4 +365,216 @@ button:last-child, .button:last-child {
   margin-bottom: 0; /* Remove default bottom margin */
 }
 
-/* Add other global styles here */ 
+/* CollapsibleSection styles */
+.collapsible-section {
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(20, 20, 20, 0.98);
+  backdrop-filter: blur(12px) saturate(150%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #2d2d2d;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+  background-color: #3a3a3a;
+}
+
+.collapsible-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapsible-icon {
+  font-size: 18px;
+}
+
+.collapsible-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.collapsible-count {
+  background-color: #4a90e2;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.collapsible-chevron {
+  transition: transform 0.2s ease;
+  color: #888;
+}
+
+.collapsible-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.collapsible-content.expanded {
+  max-height: 2000px; /* Large enough for most content */
+}
+
+.collapsible-content-inner {
+  padding: 16px;
+}
+
+/* Settings specific styles */
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: #2d2d2d;
+  border-radius: 6px;
+  border: 1px solid #333;
+}
+
+.setting-item label {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.setting-item input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.setting-item select {
+  background-color: #3a3a3a;
+  border: 1px solid #555;
+  color: #e0e0e0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.settings-info {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.5;
+}
+
+/* Snippet-style cards - matching overlay aesthetic */
+.snippet-card {
+  background: rgba(20, 20, 20, 0.98);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 20px 16px;
+  margin-bottom: 12px;
+  transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.8), 
+    0 2px 8px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 0 80px rgba(0, 0, 0, 0.4);
+}
+
+.snippet-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  border-radius: 12px;
+  z-index: 0;
+}
+
+.snippet-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.snippet-card:hover {
+  background: rgba(30, 30, 30, 0.98);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(74, 144, 226, 0.4), 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(74, 144, 226, 0.5);
+  border-color: rgba(74, 144, 226, 0.8);
+}
+
+.snippet-card:active {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 12px 24px rgba(74, 144, 226, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Snippet content styling */
+.snippet-content {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.snippet-preview {
+  font-size: 13px;
+  opacity: 0.95;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Pinned snippet variant */
+.snippet-card.pinned {
+  border-color: #e74c3c;
+  background: rgba(20, 20, 20, 0.98);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.8), 
+    0 2px 8px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(231, 76, 60, 0.3) inset,
+    0 0 20px rgba(231, 76, 60, 0.2);
+}
+
+.snippet-card.pinned::after {
+  content: "📌";
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 11px;
+  z-index: 2;
+}
+
+/* Add other global styles here */

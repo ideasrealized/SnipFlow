@@ -1,0 +1,458 @@
+/* SnipFlow Complete Overlay Node Aesthetic - ALL COMPONENTS */
+
+/* ====== CSS VARIABLES ====== */
+:root {
+  /* Core node styling */
+  --node-bg: rgba(20, 20, 20, 0.98);
+  --node-bg-hover: rgba(30, 30, 30, 0.98);
+  --node-border: rgba(255, 255, 255, 0.25);
+  --node-border-hover: rgba(74, 144, 226, 0.8);
+  --node-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 0 80px rgba(0, 0, 0, 0.4);
+  --node-shadow-hover: 0 20px 40px rgba(74, 144, 226, 0.4), 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(74, 144, 226, 0.5);
+  --node-radius: 12px;
+  --transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  /* Colors */
+  --accent: #4a90e2;
+  --accent-hover: #5aa3f0;
+  --pinned: #e74c3c;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --danger: #e74c3c;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.9);
+  --text-muted: rgba(255, 255, 255, 0.6);
+}
+
+/* ====== BASE RESET ====== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(40, 40, 40, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ====== ALL CONTAINERS GET NODE STYLE ====== */
+.app-container,
+#root,
+#chain-manager-root,
+.main-content,
+.content-area {
+  background: transparent;
+}
+
+/* ====== EVERY CARD/PANEL/MODAL/SECTION ====== */
+.sidebar-container,
+.modal-content,
+.collapsible-section,
+.item-list-item,
+.snippet-card,
+.card,
+.panel,
+.dropdown-menu,
+.context-menu,
+.tooltip-content,
+.notification,
+.dialog,
+.popover,
+.settings-panel,
+.form-container,
+.data-table,
+.grid-box,
+.chain-node,
+.setting-item,
+.menu-item,
+.tab-content,
+.accordion-item {
+  background: var(--node-bg) !important;
+  backdrop-filter: blur(24px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+  border: 1px solid var(--node-border) !important;
+  border-radius: var(--node-radius) !important;
+  box-shadow: var(--node-shadow) !important;
+  transition: var(--transition) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gradient overlay for all cards */
+.sidebar-container::before,
+.modal-content::before,
+.collapsible-section::before,
+.item-list-item::before,
+.snippet-card::before,
+.card::before,
+.panel::before,
+.dropdown-menu::before,
+.settings-panel::before,
+.grid-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  border-radius: var(--node-radius);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure content is above gradient */
+.sidebar-container > *,
+.modal-content > *,
+.collapsible-section > *,
+.item-list-item > *,
+.snippet-card > *,
+.card > *,
+.panel > *,
+.grid-box > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ====== HOVER STATES FOR ALL INTERACTIVE ELEMENTS ====== */
+.item-list-item:hover,
+.snippet-card:hover,
+.card:hover,
+.chain-node:hover,
+.grid-box:hover,
+.setting-item:hover,
+.menu-item:hover,
+button:hover,
+.button:hover,
+.clickable:hover,
+.interactive:hover {
+  background: var(--node-bg-hover) !important;
+  border-color: var(--node-border-hover) !important;
+  box-shadow: var(--node-shadow-hover) !important;
+  transform: translateY(-4px) scale(1.02);
+}
+
+/* ====== SIDEBAR SPECIFIC ====== */
+.sidebar-container {
+  padding: 20px;
+  height: 100vh;
+  width: 240px;
+  border-right: 1px solid var(--node-border);
+}
+
+.sidebar-container h3 {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1.5em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  margin-bottom: 24px;
+}
+
+.sidebar-container nav button {
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: var(--transition);
+  text-align: left;
+}
+
+.sidebar-container nav button:hover {
+  background: rgba(74, 144, 226, 0.2);
+  border-color: rgba(74, 144, 226, 0.5);
+  color: var(--accent);
+  transform: translateX(4px);
+}
+
+.sidebar-container nav button.active {
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.3), rgba(74, 144, 226, 0.2));
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ====== ALL BUTTONS ====== */
+button,
+.button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: var(--transition);
+  cursor: pointer;
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+button::before,
+.button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+button:hover::before,
+.button:hover::before {
+  opacity: 1;
+}
+
+.button-primary {
+  background: linear-gradient(135deg, var(--accent), #357abd);
+  color: white;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+}
+
+.button-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+  backdrop-filter: blur(8px);
+}
+
+.button-danger {
+  background: linear-gradient(135deg, var(--danger), #c82333);
+  color: white;
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
+
+/* ====== ALL TEXT ELEMENTS ====== */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  font-weight: 700;
+}
+
+p, span, div {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* ====== ALL FORM INPUTS ====== */
+input,
+textarea,
+select {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: var(--transition);
+  backdrop-filter: blur(8px);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* ====== MODALS ====== */
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.modal-content {
+  padding: 24px;
+  max-width: 500px;
+  margin: 50px auto;
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(-20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ====== LISTS AND GRIDS ====== */
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.grid-container {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+/* ====== SCROLLBARS ====== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ====== SPECIAL STATES ====== */
+.pinned {
+  border-color: var(--pinned) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.8), 
+    0 2px 8px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(231, 76, 60, 0.3) inset,
+    0 0 20px rgba(231, 76, 60, 0.2) !important;
+}
+
+.pinned::after {
+  content: "📌";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 12px;
+  z-index: 2;
+}
+
+.selected {
+  border-color: var(--accent) !important;
+  box-shadow: 
+    0 8px 32px rgba(74, 144, 226, 0.3),
+    0 0 0 2px rgba(74, 144, 226, 0.5) !important;
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ====== ANIMATIONS ====== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-in {
+  animation: fadeInUp 0.3s ease forwards;
+}
+
+/* ====== OVERLAY SPECIFIC ====== */
+.floating-grid {
+  display: grid;
+  gap: 16px;
+  background: transparent;
+}
+
+.grid-box {
+  min-height: 90px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ====== CHAIN MANAGER SPECIFIC ====== */
+.chain-manager-container {
+  height: 100vh;
+  display: flex;
+  background: transparent;
+}
+
+.chain-canvas {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+}
+
+.chain-node {
+  position: absolute;
+  min-width: 180px;
+  padding: 16px;
+  cursor: move;
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 768px) {
+  .sidebar-container {
+    width: 200px;
+  }
+  
+  .modal-content {
+    margin: 20px;
+    max-width: calc(100% - 40px);
+  }
+}
+
+/* ====== DARK THEME OVERRIDES (if needed) ====== */
+body.light {
+  background: linear-gradient(135deg, rgba(245, 245, 245, 0.95) 0%, rgba(235, 235, 235, 0.95) 100%);
+}
+
+body.light .grid-box,
+body.light .item-list-item,
+body.light .snippet-card,
+body.light .modal-content {
+  background: rgba(248, 248, 248, 0.98);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #222;
+}
+
+/* ====== ENSURE NOTHING ESCAPES THE STYLE ====== */
+div, span, section, article, aside, header, footer, nav, main {
+  /* Any unstyled elements should at least be transparent */
+  background-color: transparent;
+}
+
+/* Override any existing background colors - but be more specific */
+body, html {
+  background-color: transparent;
+}
+
+/* Only styled components get backgrounds */
+[class*="container"],
+[class*="panel"],
+[class*="card"],
+[class*="modal"],
+[class*="section"],
+[class*="box"],
+[class*="item"] {
+  background: var(--node-bg) !important;
+}

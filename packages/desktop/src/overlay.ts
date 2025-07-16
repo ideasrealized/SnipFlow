@@ -18,7 +18,7 @@ interface ExtendedOverlayApi {
 }
 
 // Cast window.api to the extended type
-const api = window.api as unknown as ExtendedOverlayApi;
+const overlayApi = window.api as unknown as ExtendedOverlayApi;
 
 const container = document.getElementById('container') as HTMLDivElement;
 const starterGrid = document.getElementById('starter-grid') as HTMLDivElement;
@@ -49,24 +49,70 @@ const logger = {
 };
 
 async function initSettings() {
-  const s = await api.getSettings?.();
-  if (s && s.theme === 'light') {
-    document.body.classList.add('light');
-    currentTheme = 'light';
-  } else {
-    document.body.classList.remove('light');
-    currentTheme = 'dark';
+  console.log('[Overlay] Initializing settings...');
+  const s = await overlayApi.getSettings?.();
+  console.log('[Overlay] Settings loaded:', s);
+  if (s && s.overlay) {
+    // Apply overlay theme
+    if (s.overlay.theme === 'light') {
+      document.body.classList.add('light');
+      currentTheme = 'light';
+    } else {
+      document.body.classList.remove('light');
+      currentTheme = 'dark';
+    }
+    
+    // Apply grid customization from overlay settings
+    const layoutMode = s.overlay.layoutMode || 'grid';
+    const gridCols = s.overlay.gridCols || 2;
+    const gridRows = s.overlay.gridRows || 3;
+    const nodeWidth = s.overlay.nodeWidth || 180;
+    const nodeHeight = s.overlay.nodeHeight || 90;
+    const nodeStyle = s.overlay.nodeStyle || 'rounded';
+    const animationSpeed = s.overlay.animationSpeed || 'fast';
+
+    // Apply layout mode
+    document.body.setAttribute('data-layout', layoutMode);
+    
+    // Apply node style
+    document.body.setAttribute('data-node-style', nodeStyle);
+    
+    // Update layout mode select if it exists
+    const layoutModeSelect = document.getElementById('layout-mode-select') as HTMLSelectElement;
+    if (layoutModeSelect) {
+      layoutModeSelect.value = layoutMode;
+    }
+    
+    // Show/hide grid settings based on layout mode
+    const gridSettingsSection = document.getElementById('grid-settings');
+    if (gridSettingsSection) {
+      gridSettingsSection.style.display = (layoutMode === 'grid' || layoutMode === 'compact') ? 'block' : 'none';
+    }
+
+    document.documentElement.style.setProperty('--grid-cols', String(gridCols));
+    document.documentElement.style.setProperty('--grid-rows', String(gridRows));
+    document.documentElement.style.setProperty('--node-width', nodeWidth + 'px');
+    document.documentElement.style.setProperty('--node-height', nodeHeight + 'px');
+    document.documentElement.style.setProperty('--node-style', nodeStyle);
+    document.documentElement.style.setProperty('--animation-speed', 
+      animationSpeed === 'instant' ? '0s' : 
+      animationSpeed === 'fast' ? '0.15s' : 
+      animationSpeed === 'slow' ? '0.5s' : '0.3s'
+    );
+    
+    // Apply performance settings
+    if (s.overlay.preloadContent && container) {
+      container.setAttribute('data-preload', 'true');
+    }
   }
-  
-  // No status indicator needed in floating grid design
 }
 
 async function loadData() {
   try {
-    clips = await api.getClipboardHistory();
+    clips = await overlayApi.getClipboardHistory();
     
     try {
-      chains = await api.listChains(); // This should now include the 'pinned' status
+      chains = await overlayApi.listChains(); // This should now include the 'pinned' status
       logger.info('[overlay.ts] Chains loaded:', chains ? chains.length : 0, 'chains. Pinned example:', chains?.find(c => c.isPinned));
     } catch (e) { 
       logger.warn('[overlay.ts] Could not load chains:', e);
@@ -74,23 +120,8 @@ async function loadData() {
     }
 
     try {
-      starterChains = await api.getStarterChains(); // Load starter chains
+      starterChains = await overlayApi.getStarterChains(); // Load starter chains
       logger.info('[overlay.ts] Starter chains loaded:', starterChains ? starterChains.length : 0, 'starter chains');
-      
-      // Debug: If no starter chains, create a test one for debugging
-      if (starterChains.length === 0) {
-        logger.warn('[overlay.ts] No starter chains found. Creating debug test data...');
-        starterChains.push({
-          id: 999,
-          name: 'Debug Test Chain',
-          description: 'Test starter chain for debugging',
-          options: [{ id: '1', title: 'Test Option', body: 'This is a test starter chain' }],
-          isPinned: false,
-          isStarterChain: true,
-          tags: [],
-          layoutData: '{}'
-        });
-      }
     } catch (e) { 
       logger.warn('[overlay.ts] Could not load starter chains:', e);
       starterChains = []; 
@@ -100,7 +131,7 @@ async function loadData() {
     try {
       // Ensure this API (window.api.list) is actually for non-chain, individual snippets
       // And that it doesn't conflict with listChains or return chain data incorrectly
-      snippets = await api.list(); 
+      snippets = await overlayApi.list();
       logger.info('[overlay.ts] Traditional Snippets loaded:', snippets ? snippets.length : 0);
     } catch (e) {
       logger.warn('[overlay.ts] Could not load traditional snippets:', e);
@@ -339,7 +370,7 @@ async function processSnippet(content: string): Promise<string> {
 
   const final = await processTextWithChain(
     content,
-    async name => (await api.getChainByName(name)) || undefined,
+    async name => (await overlayApi.getChainByName(name)) || undefined,
     presentChoice,
     presentInput
   );
@@ -435,12 +466,34 @@ function showFlash() {
   setTimeout(() => flash.classList.remove('show'), 800);
 }
 
+function showSuccessMessage(message: string) {
+  flash.textContent = message;
+  flash.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+  flash.classList.add('show');
+  setTimeout(() => {
+    flash.classList.remove('show');
+    flash.textContent = 'Pasted!';
+    flash.style.background = '';
+  }, 2000);
+}
+
+function showErrorMessage(message: string) {
+  flash.textContent = message;
+  flash.style.background = 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)';
+  flash.classList.add('show');
+  setTimeout(() => {
+    flash.classList.remove('show');
+    flash.textContent = 'Pasted!';
+    flash.style.background = '';
+  }, 2000);
+}
+
 async function handleSnippetSelect(snippet: Snippet) {
   logger.info('[overlay.ts] handleSnippetSelect called for snippet ID (if available):', snippet.id);
   const final = await processSnippet(snippet.content);
-  await api.insertSnippet(final);
+  await overlayApi.insertSnippet(final);
   showFlash();
-  api.hideOverlay?.();
+  overlayApi.hideOverlay?.();
 }
 
 // Global variable to track current chain being processed
@@ -476,8 +529,8 @@ async function handleChainSelect(chain: Chain) {
     } else {
       // No options - fallback to chain name
       logger.warn(`[overlay.ts] Starter chain "${chain.name}" has no options. Using chain name as content.`);
-      api.insertSnippet(chain.name);
-      api.hideOverlay?.();
+      overlayApi.insertSnippet(chain.name);
+      overlayApi.hideOverlay?.();
     }
   } else {
     // For regular chains, just copy the content directly too
@@ -492,8 +545,8 @@ async function handleChainSelect(chain: Chain) {
     }
 
     try {
-      api.insertSnippet(contentToExecute);
-      api.hideOverlay?.();
+      overlayApi.insertSnippet(contentToExecute);
+      overlayApi.hideOverlay?.();
     } catch (error) {
       logger.error(`[overlay.ts] Error processing chain "${chain.name}":`, error);
     }
@@ -789,14 +842,14 @@ function showQuickEditOverlay(chain: Chain) {
 function openChainManager(chain: Chain) {
   logger.info(`[overlay.ts] Opening chain manager for chain: ${chain.name}`);
   // TODO: Implement IPC call to open chain manager with specific chain
-  api.send('open-chain-manager', { chainId: chain.id });
-  api.hideOverlay?.();
+  overlayApi.send('open-chain-manager', { chainId: chain.id });
+  overlayApi.hideOverlay?.();
 }
 
 function copyChainReference(chain: Chain) {
   logger.info(`[overlay.ts] Copying chain reference for: ${chain.name}`);
   const reference = `[Chain:${chain.name}]`;
-  api.insertSnippet(reference);
+  overlayApi.insertSnippet(reference);
   showFlash();
 }
 
@@ -875,7 +928,7 @@ async function saveQuickEditChanges(
     logger.info(`[overlay.ts] Updating chain ${chain.id} with data:`, updateData);
     
     // Call API to update chain
-    const result = await api.invoke('update-chain', chain.id, updateData);
+    const result = await overlayApi.invoke('update-chain', chain.id, updateData);
     
     if (result.success) {
       logger.info(`[overlay.ts] Chain ${chain.id} updated successfully`);
@@ -970,32 +1023,13 @@ function showConfirmDialog(title: string, message: string): Promise<boolean> {
   });
 }
 
-function showSuccessMessage(message: string) {
-  flash.textContent = message;
-  flash.style.background = '#27ae60';
-  showFlash();
-  setTimeout(() => {
-    flash.textContent = 'Pasted!';
-    flash.style.background = 'var(--accent)';
-  }, 2000);
-}
-
-function showErrorMessage(message: string) {
-  flash.textContent = message;
-  flash.style.background = '#e74c3c';
-  showFlash();
-  setTimeout(() => {
-    flash.textContent = 'Pasted!';
-    flash.style.background = 'var(--accent)';
-  }, 3000);
-}
 
 async function showChainSelector(textarea: HTMLTextAreaElement) {
   logger.info('[overlay.ts] Opening chain selector');
   
   try {
     // Get all available chains
-    const allChains = await api.listChains();
+    const allChains = await overlayApi.listChains();
     
     if (!allChains || allChains.length === 0) {
       showErrorMessage('No chains available to link');
@@ -1224,21 +1258,15 @@ async function handleChainOptionSelect(chain: Chain, option: any) {
     logger.info(`[overlay.ts] Final content to copy: "${contentToProcess}"`);
     
     // Copy to clipboard
-    api.insertSnippet(contentToProcess);
+    overlayApi.insertSnippet(contentToProcess);
     
     // Hide overlay after execution
-    api.hideOverlay?.();
+    overlayApi.hideOverlay?.();
     
-  } catch (error) {
-    logger.error(`[overlay.ts] Error processing chain option:`, error);
-    flash.textContent = 'Error processing option!';
-    flash.style.background = '#e74c3c';
-    showFlash();
-    setTimeout(() => {
-      flash.textContent = 'Pasted!';
-      flash.style.background = 'var(--accent)';
-    }, 2000);
-  }
+    } catch (error) {
+      logger.error(`[overlay.ts] Error processing chain option:`, error);
+      showErrorMessage('Error processing option!');
+    }
 }
 
 async function processPlaceholders(content: string): Promise<string> {
@@ -1258,7 +1286,7 @@ async function processPlaceholders(content: string): Promise<string> {
     
     try {
       // Get the referenced chain
-      const referencedChain = await api.getChainByName(chainName);
+      const referencedChain = await overlayApi.getChainByName(chainName);
       
       if (referencedChain) {
         logger.info(`[overlay.ts] Found referenced chain: ${referencedChain.name}`);
@@ -1336,9 +1364,9 @@ async function processPlaceholders(content: string): Promise<string> {
 }
 
 function handleClipSelect(text: string) {
-  api.insertSnippet(text);
+  overlayApi.insertSnippet(text);
   showFlash();
-  api.hideOverlay?.();
+  overlayApi.hideOverlay?.();
 }
 
 document.addEventListener('keydown', e => {
@@ -1355,7 +1383,7 @@ document.addEventListener('keydown', e => {
       showStarterChainsView();
     } else {
       // Otherwise hide the overlay
-      api.hideOverlay?.();
+      overlayApi.hideOverlay?.();
     }
   }
 });
@@ -1369,21 +1397,22 @@ function showFloatingGrids(position: string) {
 
   // Set up container styling
   container.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out';
-  container.style.position = 'fixed';
-  container.style.width = '400px';
-  container.style.height = 'auto';
-  container.style.maxHeight = '80vh';
-  container.style.backgroundColor = 'rgba(20, 20, 20, 0.95)';
-  container.style.border = '1px solid rgba(255,255,255,0.1)';
-  container.style.padding = '15px';
-  container.style.borderRadius = '12px';
-  container.style.boxShadow = '0 8px 32px rgba(0,0,0,0.4)';
-  container.style.backdropFilter = 'blur(12px)';
-  container.style.display = 'block';
-  container.style.zIndex = '2147483647';
+  container.style.position = 'relative';
+  container.style.width = '100%';
+  container.style.height = '100%';
+  container.style.maxHeight = '100vh';
+  container.style.backgroundColor = 'transparent';
+  container.style.border = 'none';
+  container.style.padding = '0';
+  container.style.borderRadius = '0';
+  container.style.boxShadow = 'none';
+  container.style.backdropFilter = 'none';
+  container.style.display = 'flex';
+  container.style.alignItems = 'center';
+  container.style.justifyContent = 'center';
+  container.style.zIndex = '1000';
   container.style.opacity = '1';
-  container.style.overflowY = 'auto';
-  container.style.overflowX = 'hidden';
+  container.style.overflow = 'hidden';
 
   // Position based on edge trigger (positioning is handled by main process, but we can adjust if needed)
   // The main process already positions the window, so we just need to show content
@@ -1414,15 +1443,126 @@ function hideFloatingGrids() {
   });
 }
 
+// Setup customization controls
+function setupCustomizationControls() {
+  const edgeToggle = document.getElementById('edge-toggle');
+  const panel = document.getElementById('settings-panel');
+  const closeBtn = document.getElementById('close-settings');
+  const applyBtn = document.getElementById('apply-settings');
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  
+  // Layout mode
+  const layoutModeSelect = document.getElementById('layout-mode-select') as HTMLSelectElement;
+  const gridSettingsSection = document.getElementById('grid-settings');
+  
+  // Grid sliders
+  const colsSlider = document.getElementById('grid-cols-slider') as HTMLInputElement;
+  const rowsSlider = document.getElementById('grid-rows-slider') as HTMLInputElement;
+  const widthSlider = document.getElementById('node-width-slider') as HTMLInputElement;
+  const heightSlider = document.getElementById('node-height-slider') as HTMLInputElement;
+  const styleSelect = document.getElementById('node-style-select') as HTMLSelectElement;
+  
+  // Value displays
+  const colsValue = document.getElementById('cols-value');
+  const rowsValue = document.getElementById('rows-value');
+  const widthValue = document.getElementById('width-value');
+  const heightValue = document.getElementById('height-value');
+  
+  if (!edgeToggle || !panel || !applyBtn) return;
+  
+  // Toggle panel visibility with edge toggle
+  edgeToggle.addEventListener('click', () => {
+    const isVisible = panel.style.display !== 'none';
+    panel.style.display = isVisible ? 'none' : 'block';
+  });
+  
+  // Close button
+  closeBtn?.addEventListener('click', () => {
+    panel.style.display = 'none';
+  });
+  
+  // Theme toggle button
+  themeToggleBtn?.addEventListener('click', async () => {
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.body.classList.toggle('light', newTheme === 'light');
+    currentTheme = newTheme;
+    
+    try {
+      await overlayApi.invoke('save-settings', { overlay: { theme: newTheme } });
+    } catch (error) {
+      logger.error('[overlay.ts] Error saving theme:', error);
+    }
+  });
+  
+  // Update value displays
+  colsSlider?.addEventListener('input', () => {
+    if (colsValue) colsValue.textContent = colsSlider.value;
+  });
+  
+  rowsSlider?.addEventListener('input', () => {
+    if (rowsValue) rowsValue.textContent = rowsSlider.value;
+  });
+  
+  widthSlider?.addEventListener('input', () => {
+    if (widthValue) widthValue.textContent = widthSlider.value;
+  });
+  
+  heightSlider?.addEventListener('input', () => {
+    if (heightValue) heightValue.textContent = heightSlider.value;
+  });
+  
+  // Layout mode change handler
+  layoutModeSelect?.addEventListener('change', () => {
+    const selectedMode = layoutModeSelect.value;
+    if (gridSettingsSection) {
+      // Hide grid settings for non-grid layouts
+      gridSettingsSection.style.display = (selectedMode === 'grid' || selectedMode === 'compact') ? 'block' : 'none';
+    }
+  });
+  
+  // Apply settings
+  applyBtn.addEventListener('click', async () => {
+    const newSettings = {
+      overlay: {
+        layoutMode: layoutModeSelect.value,
+        gridCols: parseInt(colsSlider.value),
+        gridRows: parseInt(rowsSlider.value),
+        nodeWidth: parseInt(widthSlider.value),
+        nodeHeight: parseInt(heightSlider.value),
+        nodeStyle: styleSelect.value as any
+      }
+    };
+    
+    // Apply immediately
+    document.body.setAttribute('data-layout', layoutModeSelect.value);
+    document.documentElement.style.setProperty('--grid-cols', colsSlider.value);
+    document.documentElement.style.setProperty('--grid-rows', rowsSlider.value);
+    document.documentElement.style.setProperty('--node-width', widthSlider.value + 'px');
+    document.documentElement.style.setProperty('--node-height', heightSlider.value + 'px');
+    document.body.setAttribute('data-node-style', styleSelect.value);
+    
+    // Save settings
+    try {
+      await overlayApi.invoke('save-settings', newSettings);
+      showSuccessMessage('Settings saved!');
+      panel.style.display = 'none';
+    } catch (error) {
+      logger.error('[overlay.ts] Error saving settings:', error);
+      showErrorMessage('Failed to save settings');
+    }
+  });
+}
+
 initSettings();
 loadData();
+setupCustomizationControls();
 
 // BEGINNING OF NEW/MODIFIED IPC HANDLING
-if (api && typeof api.on === 'function' && typeof api.send === 'function') {
-    logger.info('[overlay.ts] Setting up IPC listeners via api (formerly window.api)');
+if (overlayApi && typeof overlayApi.on === 'function' && typeof overlayApi.send === 'function') {
+    logger.info('[overlay.ts] Setting up IPC listeners via overlayApi (formerly window.api)');
 
     // Listener for when main process tells overlay to HIDE its content
-    api.on('overlay:hide', () => {
+    overlayApi.on('overlay:hide', () => {
         logger.info('[overlay.ts] ✅ RECEIVED overlay:hide command from main.');
         
         // Hide the main overlay container
@@ -1436,19 +1576,19 @@ if (api && typeof api.on === 'function' && typeof api.send === 'function') {
                 
                 // CRITICAL: Send acknowledgment back to the main process
                 logger.info('[overlay.ts] ✅ SENDING overlay:hidden-ack to main.');
-                api.send('overlay:hidden-ack'); 
+                overlayApi.send('overlay:hidden-ack'); 
             }, 150); // Adjust timeout to match any CSS animation/transition
         } else {
             logger.warn('[overlay.ts] Could not find #container to hide. Sending ack immediately.');
             // Still send ack even if container isn't found, so main isn't stuck
             logger.info('[overlay.ts] ✅ SENDING overlay:hidden-ack to main (container not found).');
-            api.send('overlay:hidden-ack');
+            overlayApi.send('overlay:hidden-ack');
         }
     });
 
     // Listener for when main process tells overlay to SHOW its content
     // (This replaces the older window.events?.onOverlayShow)
-    api.on('overlay:show', (data: any) => { 
+    overlayApi.on('overlay:show', (data: any) => {
         logger.info(`[overlay.ts] Received overlay:show from main with data:`, data);
         if (container) {
             // Ensure container is ready to be shown before populating
@@ -1463,10 +1603,11 @@ if (api && typeof api.on === 'function' && typeof api.send === 'function') {
         }
     });
 
-    // Listener for theme changes from main process
-    // (This replaces the older window.events?.onThemeChanged)
-    api.on('settings:changed', (newSettings: any) => {
-        logger.info('[overlay.ts] Received settings:changed from main.');
+    // Listener for settings changes from main process
+    overlayApi.on('settings:changed', (newSettings: any) => {
+        logger.info('[overlay.ts] Received settings:changed from main:', newSettings);
+        
+        // Apply theme changes
         if (newSettings && newSettings.theme !== currentTheme) {
             if (newSettings.theme === 'light') {
                 document.body.classList.add('light');
@@ -1476,34 +1617,83 @@ if (api && typeof api.on === 'function' && typeof api.send === 'function') {
             currentTheme = newSettings.theme;
             logger.info(`[overlay.ts] Theme changed to: ${currentTheme}`);
         }
+        
+        // Apply overlay settings if they exist
+        if (newSettings && newSettings.overlay) {
+            const overlaySettings = newSettings.overlay;
+            
+            // Apply overlay theme (follows global theme)
+            if (overlaySettings.theme === 'light') {
+                document.body.classList.add('light');
+            } else {
+                document.body.classList.remove('light');
+            }
+            
+            // Apply grid customization
+            if (overlaySettings.gridCols !== undefined) {
+                document.documentElement.style.setProperty('--grid-cols', String(overlaySettings.gridCols));
+            }
+            if (overlaySettings.gridRows !== undefined) {
+                document.documentElement.style.setProperty('--grid-rows', String(overlaySettings.gridRows));
+            }
+            if (overlaySettings.nodeWidth !== undefined) {
+                document.documentElement.style.setProperty('--node-width', overlaySettings.nodeWidth + 'px');
+            }
+            if (overlaySettings.nodeHeight !== undefined) {
+                document.documentElement.style.setProperty('--node-height', overlaySettings.nodeHeight + 'px');
+            }
+            if (overlaySettings.nodeStyle !== undefined) {
+                document.documentElement.style.setProperty('--node-style', overlaySettings.nodeStyle);
+                document.body.setAttribute('data-node-style', overlaySettings.nodeStyle);
+            }
+            if (overlaySettings.animationSpeed !== undefined) {
+                const speedValue = overlaySettings.animationSpeed === 'instant' ? '0s' : 
+                    overlaySettings.animationSpeed === 'fast' ? '0.15s' : 
+                    overlaySettings.animationSpeed === 'slow' ? '0.5s' : '0.3s';
+                document.documentElement.style.setProperty('--animation-speed', speedValue);
+            }
+            
+            // Apply opacity and blur if supported
+            if (overlaySettings.opacity !== undefined) {
+                document.documentElement.style.setProperty('--overlay-opacity', String(overlaySettings.opacity));
+            }
+            if (overlaySettings.blur !== undefined) {
+                document.documentElement.style.setProperty('--overlay-blur', overlaySettings.blur + 'px');
+            }
+            
+            // Apply preload content setting
+            if (overlaySettings.preloadContent !== undefined && container) {
+                if (overlaySettings.preloadContent) {
+                    container.setAttribute('data-preload', 'true');
+                } else {
+                    container.removeAttribute('data-preload');
+                }
+            }
+            
+            logger.info('[overlay.ts] Applied overlay settings:', overlaySettings);
+        }
     });
 
     // Listener for chain updates (real-time refresh)
-    api.on('chains:updated', () => {
+    overlayApi.on('chains:updated', () => {
         logger.info('[overlay.ts] Received chains:updated from main. Refreshing data...');
         loadData(); // Refresh all data including starter chains
     });
 
     // Listener for snippet insertion feedback
-    api.on('snippet-inserted', (result: { success: boolean; error?: string }) => {
+    overlayApi.on('snippet-inserted', (result: { success: boolean; error?: string }) => {
         logger.info('[overlay.ts] Received snippet-inserted feedback:', result);
         if (result.success) {
             logger.info('[overlay.ts] ✅ Snippet successfully copied to clipboard!');
             showFlash(); // Show success flash
         } else {
             logger.error('[overlay.ts] ❌ Snippet insertion failed:', result.error);
-            flash.textContent = 'Copy failed!';
-            flash.style.background = '#e74c3c';
-            showFlash();
-            setTimeout(() => {
-                flash.textContent = 'Pasted!';
-                flash.style.background = 'var(--accent)';
-            }, 2000);
+            showErrorMessage('Copy failed!');
         }
     });
 
 } else {
-    logger.error('[overlay.ts] CRITICAL: api (window.api) or api.on/send is not defined. Check preload script and context isolation setup.');
+    logger.error('[overlay.ts] CRITICAL: overlayApi (window.api) or overlayApi.on/send is not defined. Check preload script and context isolation setup.');
 }
 // END OF NEW/MODIFIED IPC HANDLING
 

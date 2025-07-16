@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edge Hover Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+    .edge-zones {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+    .edge-zone {
+      position: absolute;
+      background: rgba(74, 144, 226, 0.3);
+      border: 2px solid #4a90e2;
+    }
+    .edge-zone.left-center {
+      left: 0;
+      top: 30%;
+      width: 50px;
+      height: 40%;
+    }
+    .edge-zone.right-center {
+      right: 0;
+      top: 30%;
+      width: 50px;
+      height: 40%;
+    }
+    .edge-zone.top-left {
+      left: 0;
+      top: 0;
+      width: 50px;
+      height: 50px;
+    }
+    .edge-zone.top-right {
+      right: 0;
+      top: 0;
+      width: 50px;
+      height: 50px;
+    }
+    .edge-zone.bottom-left {
+      left: 0;
+      bottom: 0;
+      width: 50px;
+      height: 50px;
+    }
+    .edge-zone.bottom-right {
+      right: 0;
+      bottom: 0;
+      width: 50px;
+      height: 50px;
+    }
+    .info {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #252526;
+      border-radius: 8px;
+    }
+    h1 {
+      color: #4a90e2;
+    }
+    .status {
+      padding: 10px;
+      background: #2d2d2d;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="edge-zones">
+    <div class="edge-zone left-center"></div>
+    <div class="edge-zone right-center"></div>
+    <div class="edge-zone top-left"></div>
+    <div class="edge-zone top-right"></div>
+    <div class="edge-zone bottom-left"></div>
+    <div class="edge-zone bottom-right"></div>
+  </div>
+  
+  <div class="info">
+    <h1>SnipFlow Edge Hover Zones</h1>
+    <p>The highlighted areas show where the edge hover trigger zones are located.</p>
+    <p>Default settings:</p>
+    <ul>
+      <li>Position: left-center</li>
+      <li>Trigger size: 50px</li>
+      <li>Delay: 200ms</li>
+    </ul>
+    <div class="status">
+      <strong>To activate overlay:</strong> Move your mouse to one of the highlighted zones and wait 200ms
+    </div>
+    <p>If the overlay doesn't appear, check:</p>
+    <ol>
+      <li>Edge hover is enabled in settings</li>
+      <li>The overlay window is created (check dev tools)</li>
+      <li>No JavaScript errors in console</li>
+    </ol>
+  </div>
+</body>
+</html>

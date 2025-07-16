@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SnipFlow Settings</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #4a90e2;
+            border-bottom: 2px solid #4a90e2;
+            padding-bottom: 10px;
+        }
+        
+        .section {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section h2 {
+            color: #4a90e2;
+            margin-top: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+        
+        input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background: linear-gradient(135deg, #5aa3f0 0%, #4a90e2 100%);
+        }
+        
+        .success {
+            color: #51cf66;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: green;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="status">SETTINGS LOADED</div>
+    
+    <div class="container">
+        <h1>🛠️ SnipFlow Settings & Debug</h1>
+        
+        <div class="section">
+            <h2>⚙️ General Settings</h2>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="autoStart"> Start SnipFlow on system startup
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="theme">Theme:</label>
+                <select id="theme">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="auto">Auto (System)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="shortcut">Global Shortcut:</label>
+                <input type="text" id="shortcut" placeholder="e.g., Ctrl+Shift+V">
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🎯 Edge Hover Settings</h2>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="edgeHoverEnabled"> Enable Edge Hover
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="edgePosition">Edge Position:</label>
+                <select id="edgePosition">
+                    <option value="left-center">Left Center</option>
+                    <option value="right-center">Right Center</option>
+                    <option value="top-center">Top Center</option>
+                    <option value="bottom-center">Bottom Center</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="hoverDelay">Hover Delay (ms):</label>
+                <input type="number" id="hoverDelay" min="0" max="2000" value="662">
+            </div>
+            <div class="form-group">
+                <label for="triggerSize">Trigger Area Size (px):</label>
+                <input type="number" id="triggerSize" min="5" max="100" value="20">
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🖥️ Overlay Settings</h2>
+            <div class="form-group">
+                <label for="overlayOpacity">Opacity (0-1):</label>
+                <input type="number" id="overlayOpacity" min="0" max="1" step="0.1" value="0.95">
+            </div>
+            <div class="form-group">
+                <label for="overlayBlur">Blur (px):</label>
+                <input type="number" id="overlayBlur" min="0" max="50" value="10">
+            </div>
+            <div class="form-group">
+                <label for="overlaySide">Side:</label>
+                <select id="overlaySide">
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="overlayY">Y Position (px):</label>
+                <input type="number" id="overlayY" min="0" max="2000" value="100">
+            </div>
+            <div class="form-group">
+                <label for="gridCols">Grid Columns:</label>
+                <input type="number" id="gridCols" min="1" max="10" value="3">
+            </div>
+            <div class="form-group">
+                <label for="gridRows">Grid Rows:</label>
+                <input type="number" id="gridRows" min="1" max="10" value="4">
+            </div>
+            <div class="form-group">
+                <label for="nodeWidth">Node Width (px):</label>
+                <input type="number" id="nodeWidth" min="50" max="500" value="120">
+            </div>
+            <div class="form-group">
+                <label for="nodeHeight">Node Height (px):</label>
+                <input type="number" id="nodeHeight" min="30" max="300" value="80">
+            </div>
+            <div class="form-group">
+                <label for="nodeStyle">Node Style:</label>
+                <select id="nodeStyle">
+                    <option value="square">Square</option>
+                    <option value="rounded">Rounded</option>
+                    <option value="circle">Circle</option>
+                    <option value="hexagon">Hexagon</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="animationSpeed">Animation Speed:</label>
+                <select id="animationSpeed">
+                    <option value="instant">Instant</option>
+                    <option value="fast">Fast</option>
+                    <option value="normal">Normal</option>
+                    <option value="slow">Slow</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="preloadContent"> Preload Content
+                </label>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🔧 Diagnostics & Debug</h2>
+            <button onclick="exportDiagnostics()">Export Diagnostics</button>
+            <button onclick="clearCache()">Clear Cache</button>
+            <button onclick="resetSettings()">Reset All Settings</button>
+            
+            <div style="margin-top: 20px;">
+                <p><strong>Version:</strong> 0.1.0</p>
+                <p><strong>Electron:</strong> <span id="electronVersion"></span></p>
+                <p><strong>Node:</strong> <span id="nodeVersion"></span></p>
+                <p><strong>Chrome:</strong> <span id="chromeVersion"></span></p>
+            </div>
+        </div>
+        
+        <div class="section">
+            <button onclick="saveSettings()">Save Settings</button>
+            <button onclick="loadSettings()">Reload Settings</button>
+            <div id="status" style="margin-top: 10px;"></div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🛠️ Settings page loaded successfully');
+        
+        // Initialize version info
+        document.getElementById('electronVersion').textContent = process.versions.electron;
+        document.getElementById('nodeVersion').textContent = process.versions.node;
+        document.getElementById('chromeVersion').textContent = process.versions.chrome;
+        
+        // Load current settings
+        async function loadSettings() {
+            try {
+                const settings = await window.api.invoke('get-settings');
+                console.log('Settings loaded:', settings);
+                
+                document.getElementById('theme').value = settings.theme || 'dark';
+                document.getElementById('edgeHoverEnabled').checked = settings.edgeHover?.enabled || false;
+                document.getElementById('edgePosition').value = settings.edgeHover?.position || 'left-center';
+                document.getElementById('hoverDelay').value = settings.edgeHover?.delay || 662;
+                document.getElementById('triggerSize').value = settings.edgeHover?.triggerSize || 20;
+                
+                // Load overlay settings
+                document.getElementById('overlayOpacity').value = settings.overlay?.opacity || 0.95;
+                document.getElementById('overlayBlur').value = settings.overlay?.blur || 10;
+                document.getElementById('overlaySide').value = settings.overlay?.side || 'right';
+                document.getElementById('overlayY').value = settings.overlay?.y || 100;
+                document.getElementById('gridCols').value = settings.overlay?.gridCols || 3;
+                document.getElementById('gridRows').value = settings.overlay?.gridRows || 4;
+                document.getElementById('nodeWidth').value = settings.overlay?.nodeWidth || 120;
+                document.getElementById('nodeHeight').value = settings.overlay?.nodeHeight || 80;
+                document.getElementById('nodeStyle').value = settings.overlay?.nodeStyle || 'rounded';
+                document.getElementById('animationSpeed').value = settings.overlay?.animationSpeed || 'normal';
+                document.getElementById('preloadContent').checked = settings.overlay?.preloadContent || false;
+                
+                showStatus('Settings loaded successfully', 'success');
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showStatus('Error loading settings', 'error');
+            }
+        }
+        
+        // Save settings
+        async function saveSettings() {
+            try {
+                const newSettings = {
+                    theme: document.getElementById('theme').value,
+                    edgeHover: {
+                        enabled: document.getElementById('edgeHoverEnabled').checked,
+                        position: document.getElementById('edgePosition').value,
+                        delay: parseInt(document.getElementById('hoverDelay').value),
+                        triggerSize: parseInt(document.getElementById('triggerSize').value)
+                    },
+                    overlay: {
+                        theme: document.getElementById('theme').value, // overlay theme follows global theme
+                        opacity: parseFloat(document.getElementById('overlayOpacity').value),
+                        blur: parseInt(document.getElementById('overlayBlur').value),
+                        side: document.getElementById('overlaySide').value,
+                        y: parseInt(document.getElementById('overlayY').value),
+                        gridCols: parseInt(document.getElementById('gridCols').value),
+                        gridRows: parseInt(document.getElementById('gridRows').value),
+                        nodeWidth: parseInt(document.getElementById('nodeWidth').value),
+                        nodeHeight: parseInt(document.getElementById('nodeHeight').value),
+                        nodeStyle: document.getElementById('nodeStyle').value,
+                        animationSpeed: document.getElementById('animationSpeed').value,
+                        preloadContent: document.getElementById('preloadContent').checked
+                    }
+                };
+                
+                await window.api.invoke('save-settings', newSettings);
+                showStatus('Settings saved successfully!', 'success');
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showStatus('Error saving settings', 'error');
+            }
+        }
+        
+        // Utility functions
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+            setTimeout(() => {
+                statusDiv.textContent = '';
+                statusDiv.className = '';
+            }, 3000);
+        }
+        
+        function exportDiagnostics() {
+            window.api.invoke('export-diagnostics')
+                .then(() => showStatus('Diagnostics exported', 'success'))
+                .catch(err => showStatus('Error exporting diagnostics', 'error'));
+        }
+        
+        function clearCache() {
+            if (confirm('Are you sure you want to clear all cached data?')) {
+                showStatus('Cache cleared', 'success');
+            }
+        }
+        
+        function resetSettings() {
+            if (confirm('Are you sure you want to reset all settings to defaults?')) {
+                showStatus('Settings reset', 'success');
+                loadSettings();
+            }
+        }
+        
+        // Load settings on page load
+        loadSettings();
+    </script>
+</body>
+</html>

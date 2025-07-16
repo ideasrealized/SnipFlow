@@ -19,7 +19,7 @@
     </style>
     -->
     <style>
-      /* UNCOMMENTED ORIGINAL STYLES */
+      /* ENHANCED MODERN STYLES */
       * {
         margin: 0;
         padding: 0;
@@ -28,37 +28,95 @@
       
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-        background: #1a1a1a;
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%);
         color: #e0e0e0;
         padding: 20px;
         line-height: 1.6;
+        min-height: 100vh;
       }
       
       .container {
         max-width: 1200px;
         margin: 0 auto;
+        backdrop-filter: blur(20px);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
       }
       
       h1 {
         color: #4a90e2;
-        margin-bottom: 20px;
-        font-size: 24px;
-        border-bottom: 2px solid #333;
-        padding-bottom: 10px;
+        margin-bottom: 30px;
+        font-size: 32px;
+        font-weight: 700;
+        text-align: center;
+        background: linear-gradient(135deg, #4a90e2 0%, #5aa3f0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        border-bottom: 2px solid rgba(74, 144, 226, 0.3);
+        padding-bottom: 15px;
+        position: relative;
+      }
+      
+      h1::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #4a90e2, transparent);
       }
       
       h2 {
         color: #4a90e2;
-        margin: 30px 0 15px;
-        font-size: 18px;
+        margin: 30px 0 20px;
+        font-size: 20px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      
+      h2::before {
+        content: '';
+        width: 4px;
+        height: 20px;
+        background: linear-gradient(135deg, #4a90e2, #5aa3f0);
+        border-radius: 2px;
       }
       
       .section {
-        background: #2d2d2d;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-        border: 1px solid #404040;
+        background: rgba(45, 45, 45, 0.8);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        padding: 25px;
+        margin-bottom: 25px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(74, 144, 226, 0.5), transparent);
+      }
+      
+      .section:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+        border-color: rgba(74, 144, 226, 0.3);
       }
       
       .form-group {
@@ -66,35 +124,71 @@
       }
       
       input[type="text"] {
-        background: #3a3a3a;
-        border: 1px solid #555;
+        background: rgba(58, 58, 58, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         color: #e0e0e0;
-        padding: 10px;
-        border-radius: 4px;
+        padding: 12px 16px;
+        border-radius: 12px;
         width: 100%;
         font-size: 14px;
+        transition: all 0.3s ease;
+        position: relative;
       }
       
       input[type="text"]:focus {
         outline: none;
         border-color: #4a90e2;
-        box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2), 0 0 20px rgba(74, 144, 226, 0.1);
+        background: rgba(58, 58, 58, 0.9);
+        transform: scale(1.02);
+      }
+      
+      input[type="text"]::placeholder {
+        color: rgba(224, 224, 224, 0.5);
       }
       
       button {
-        background: #4a90e2;
+        background: linear-gradient(135deg, #4a90e2 0%, #5aa3f0 100%);
         color: white;
         border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
+        padding: 10px 20px;
+        border-radius: 10px;
         cursor: pointer;
         font-size: 14px;
+        font-weight: 600;
         margin-right: 8px;
         margin-bottom: 8px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+      }
+      
+      button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
       }
       
       button:hover {
-        background: #357abd;
+        background: linear-gradient(135deg, #357abd 0%, #4a90e2 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
+      }
+      
+      button:hover::before {
+        left: 100%;
+      }
+      
+      button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(74, 144, 226, 0.3);
       }
       
       button.danger {
@@ -119,19 +213,41 @@
       }
       
       .item-list li {
-        background: #3a3a3a;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 10px;
-        margin-bottom: 8px;
+        background: rgba(58, 58, 58, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .item-list li::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 3px;
+        height: 100%;
+        background: linear-gradient(135deg, #4a90e2, #5aa3f0);
+        opacity: 0;
+        transition: opacity 0.3s ease;
       }
       
       .item-list li:hover {
-        background: #404040;
-        border-color: #666;
+        background: rgba(64, 64, 64, 0.8);
+        border-color: rgba(74, 144, 226, 0.3);
+        transform: translateX(5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      }
+      
+      .item-list li:hover::before {
+        opacity: 1;
       }
       
       .item-content {
@@ -336,37 +452,37 @@
     <div class="container">
       <h1>SnipFlow</h1>
 
-      <div class="section">
-        <h2>Add New Snippet</h2>
+        <div class="section">
+        <h2>📝 Add New Snippet</h2>
         <form id="add-form" class="form-group">
           <input id="content" type="text" placeholder="Enter snippet content..." />
-          <button type="submit">Add Snippet</button>
+          <button type="submit">✨ Add Snippet</button>
         </form>
       </div>
 
       <div class="section">
-        <h2>Snippets</h2>
+        <h2>📋 Snippets</h2>
         <div id="snippets-empty" class="empty-state" style="display:none;">No snippets yet. Add one above!</div>
         <ul id="list" class="item-list"></ul>
       </div>
 
       <div class="section clipboard-history-section">
-        <h2>Clipboard History</h2>
+        <h2>📋 Clipboard History</h2>
         <div id="clipboard-empty" class="empty-state" style="display:none;">Clipboard is empty.</div>
         <ul id="clipboard-list" class="item-list"></ul>
       </div>
       
       <div class="section existing-chains-section">
-        <h2>Existing SnipChains</h2>
+        <h2>🔗 Existing SnipChains</h2>
         <div class="controls" style="margin-bottom: 15px;">
-          <button type="button" id="open-new-chain-manager-btn" class="secondary">Open New Chain Manager</button>
+          <button type="button" id="open-new-chain-manager-btn" class="secondary">⚙️ Open Chain Manager</button>
         </div>
         <div id="chains-empty" class="empty-state" style="display:none;">No chains defined. Open the Chain Manager to create one.</div>
         <ul id="chain-list" class="item-list"></ul>
       </div>
 
       <div class="section settings-diagnostics-section">
-        <h2>Settings & Diagnostics</h2>
+        <h2>⚙️ Settings & Diagnostics</h2>
         
         <div class="settings-form">
           <h3>Edge Hover Settings</h3>
@@ -399,14 +515,14 @@
           </div>
           
           <div class="form-group">
-            <button id="save-settings">Save Settings</button>
-            <button id="test-overlay" class="secondary">Test Overlay</button>
-            <button id="toggle-theme" class="secondary">Toggle Theme</button>
+            <button id="save-settings">💾 Save Settings</button>
+            <button id="test-overlay" class="secondary">🧪 Test Overlay</button>
+            <button id="toggle-theme" class="secondary">🌓 Toggle Theme</button>
           </div>
         </div>
         
-        <button id="export-diagnostics">Export Diagnostics</button>
-        <h3>Error Log</h3>
+        <button id="export-diagnostics">📊 Export Diagnostics</button>
+        <h3>🐛 Error Log</h3>
         <div id="error-log" class="diagnostics"></div>
       </div>
 
@@ -419,6 +535,53 @@
           <div id="modal-buttons" style="text-align:right;">
             <button id="modal-cancel" class="button-secondary">Cancel</button>
             <button id="modal-ok" class="button-primary">OK</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Welcome/Info Modal -->
+      <div id="welcome-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2001; display:none; justify-content:center; align-items:center;">
+        <div style="background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); padding:30px; border-radius:20px; min-width:500px; max-width:800px; border: 1px solid rgba(74, 144, 226, 0.3); box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <h2 style="margin-top:0; color:#4a90e2; text-align:center; font-size:28px; margin-bottom:20px;">🚀 Welcome to SnipFlow!</h2>
+          
+          <div style="margin-bottom:25px; line-height:1.6;">
+            <p style="margin-bottom:15px; font-size:16px;">Your AI-powered text productivity tool is ready! Here's what you can do:</p>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:20px 0;">
+              <div style="background:rgba(74,144,226,0.1); padding:15px; border-radius:10px; border:1px solid rgba(74,144,226,0.2);">
+                <h4 style="color:#4a90e2; margin:0 0 10px 0;">✨ Quick Access</h4>
+                <p style="margin:0; font-size:14px;">Move your mouse to screen edges to trigger the overlay - instant access to your snippets and chains!</p>
+              </div>
+              
+              <div style="background:rgba(74,144,226,0.1); padding:15px; border-radius:10px; border:1px solid rgba(74,144,226,0.2);">
+                <h4 style="color:#4a90e2; margin:0 0 10px 0;">🔗 Smart Chains</h4>
+                <p style="margin:0; font-size:14px;">Create dynamic text chains with placeholders and links to other chains for complex workflows.</p>
+              </div>
+              
+              <div style="background:rgba(74,144,226,0.1); padding:15px; border-radius:10px; border:1px solid rgba(74,144,226,0.2);">
+                <h4 style="color:#4a90e2; margin:0 0 10px 0;">📋 Clipboard Magic</h4>
+                <p style="margin:0; font-size:14px;">Automatic clipboard history tracking - never lose that important text again!</p>
+              </div>
+              
+              <div style="background:rgba(74,144,226,0.1); padding:15px; border-radius:10px; border:1px solid rgba(74,144,226,0.2);">
+                <h4 style="color:#4a90e2; margin:0 0 10px 0;">⚡ Instant Paste</h4>
+                <p style="margin:0; font-size:14px;">Click to copy, double-click to paste directly into any application - seamless workflow integration.</p>
+              </div>
+            </div>
+            
+            <div style="background:rgba(243,156,18,0.1); padding:15px; border-radius:10px; border:1px solid rgba(243,156,18,0.3); margin-top:20px;">
+              <h4 style="color:#f39c12; margin:0 0 10px 0;">💡 Pro Tip</h4>
+              <p style="margin:0; font-size:14px;">The overlay will appear when you hover near the edges of your screen. You can customize the trigger position and sensitivity in Settings below!</p>
+            </div>
+          </div>
+          
+          <div style="text-align:center; margin-top:25px;">
+            <button id="welcome-close" style="background: linear-gradient(135deg, #4a90e2 0%, #5aa3f0 100%); color:white; border:none; padding:12px 30px; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; margin-right:15px; box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);">
+              🎯 Get Started
+            </button>
+            <button id="welcome-settings" style="background:rgba(255,255,255,0.1); color:#e0e0e0; border:1px solid rgba(255,255,255,0.2); padding:12px 30px; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; backdrop-filter:blur(10px);">
+              ⚙️ Settings
+            </button>
           </div>
         </div>
       </div>
