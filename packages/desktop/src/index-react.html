@@ -18,6 +18,42 @@
         color: #e0e0e0;
       }
       
+      /* Override default blue focus/selection colors */
+      *:focus {
+        outline: 1px solid rgba(255, 255, 255, 0.3) !important;
+        outline-offset: 2px;
+      }
+      
+      *::selection {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+      }
+      
+      input:focus,
+      select:focus,
+      textarea:focus,
+      button:focus {
+        outline: 1px solid rgba(255, 255, 255, 0.4) !important;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+      }
+      
+      /* Remove blue highlights from dropdowns */
+      select {
+        background-color: rgba(30, 30, 30, 0.95) !important;
+        color: #e0e0e0 !important;
+      }
+      
+      select option {
+        background-color: rgba(20, 20, 20, 0.98) !important;
+        color: #e0e0e0 !important;
+      }
+      
+      select option:checked {
+        background: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+      }
+      
       /* Loading state */
       #loading {
         display: flex;
@@ -63,6 +99,83 @@
         text-align: center;
         padding: 20px;
         font-style: italic;
+      }
+      
+      /* Settings View Specific Styles */
+      .settings-section {
+        background: rgba(30, 30, 30, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      
+      .setting-item {
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #e0e0e0;
+      }
+      
+      .setting-item label {
+        min-width: 150px;
+        color: #b0b0b0;
+      }
+      
+      .setting-item input[type="text"],
+      .setting-item input[type="number"],
+      .setting-item select {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        color: #e0e0e0;
+        padding: 6px 10px;
+        flex: 1;
+      }
+      
+      .setting-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
+      
+      .button {
+        background: #4a90e2;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+      
+      .button:hover:not(:disabled) {
+        background: #5aa3f0;
+        transform: translateY(-1px);
+      }
+      
+      .button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      
+      .button-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      
+      .button-secondary:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      
+      .button-danger {
+        background: #e74c3c;
+      }
+      
+      .button-danger:hover:not(:disabled) {
+        background: #c0392b;
       }
     </style>
   </head>

@@ -15,6 +15,7 @@ import {
   initProductionDb,
   getSettings as dbGetSettings,
   updateSettings as dbUpdateSettings,
+  resetEdgeHoverSettings as dbResetEdgeHoverSettings,
   closeDb,
   getChainById as dbGetChainById,
   getChainByName as dbGetChainByName,
@@ -265,6 +266,96 @@ function startMouseTracking(currentSettings: Settings) {
   }, EDGE_HOVER_POLL_INTERVAL);
 }
 
+// Function to calculate overlay window size based on current settings and actual node count
+function calculateOverlaySize(): { width: number; height: number } {
+  const settings = dbGetSettings();
+  const gridCols = settings.overlay.gridCols || 2;
+  const gridRows = settings.overlay.gridRows || 3;
+  const nodeWidth = settings.overlay.nodeWidth || 180;
+  const nodeHeight = settings.overlay.nodeHeight || 90;
+  const nodeGap = settings.overlay.nodeGap || 8; // Use settings nodeGap with fallback
+  
+  // Get actual node counts for better sizing
+  const pinnedItems = dbGetPinnedItems();
+  const starterChains = dbGetStarterChains();
+  const clipboardHistory = dbGetClipboardHistory();
+  
+  // Calculate sections that will be shown
+  const sections = [];
+  if (pinnedItems.length > 0) sections.push({ name: 'Pinned', count: pinnedItems.length });
+  if (starterChains.length > 0) sections.push({ name: 'Starters', count: starterChains.length });
+  if (clipboardHistory.length > 0) sections.push({ name: 'History', count: Math.min(clipboardHistory.length, 8) }); // Limit history display
+  
+  // Calculate total nodes needed
+  const totalNodes = sections.reduce((sum, section) => sum + section.count, 0);
+  
+  // Calculate optimal grid dimensions based on actual content
+  let optimalCols = gridCols;
+  let optimalRows = gridRows;
+  
+  if (totalNodes > 0) {
+    // Adjust grid to fit actual content better
+    optimalCols = Math.min(gridCols, Math.ceil(Math.sqrt(totalNodes)));
+    optimalRows = Math.ceil(totalNodes / optimalCols);
+    
+    // Ensure minimum dimensions
+    optimalCols = Math.max(1, optimalCols);
+    optimalRows = Math.max(1, optimalRows);
+    
+    // Respect maximum dimensions from settings
+    optimalCols = Math.min(optimalCols, gridCols);
+    optimalRows = Math.min(optimalRows, gridRows);
+  }
+  
+  // Calculate window size based on optimized grid
+  const containerPadding = 40; // 20px each side
+  const sectionHeaderHeight = sections.length > 1 ? 40 : 20; // Header space per section
+  const width = (nodeWidth * optimalCols) + (nodeGap * (optimalCols - 1)) + containerPadding;
+  const height = (nodeHeight * optimalRows) + (nodeGap * (optimalRows - 1)) + containerPadding + sectionHeaderHeight;
+  
+  logger.info(`[main.ts] Calculated overlay size: ${width}x${height} for ${totalNodes} nodes in ${optimalCols}x${optimalRows} grid`);
+  
+  return { width, height };
+}
+
+// Function to resize overlay window based on current settings
+function resizeOverlayWindow() {
+  if (!overlayWindow) {
+    logger.warn('[main.ts] resizeOverlayWindow called but overlayWindow is null.');
+    return;
+  }
+
+  const { width, height } = calculateOverlaySize();
+  const workArea = screen.getPrimaryDisplay().workArea;
+  
+  // Ensure the overlay doesn't exceed screen boundaries with dynamic padding
+  const minPadding = 30; // Minimum padding from screen edges
+  const maxWidth = workArea.width - (minPadding * 2);
+  const maxHeight = workArea.height - (minPadding * 2);
+  
+  const finalWidth = Math.min(width, maxWidth);
+  const finalHeight = Math.min(height, maxHeight);
+  
+  // Log sizing information for debugging
+  logger.info(`[main.ts] Overlay sizing: calculated=${width}x${height}, max=${maxWidth}x${maxHeight}, final=${finalWidth}x${finalHeight}`);
+  
+  // Get current position to maintain it during resize
+  const currentBounds = overlayWindow.getBounds();
+  
+  // Resize the window
+  overlayWindow.setSize(finalWidth, finalHeight);
+  
+  // Reposition if the window would go off-screen after resize
+  const newX = Math.max(workArea.x, Math.min(currentBounds.x, workArea.x + workArea.width - finalWidth));
+  const newY = Math.max(workArea.y, Math.min(currentBounds.y, workArea.y + workArea.height - finalHeight));
+  
+  if (newX !== currentBounds.x || newY !== currentBounds.y) {
+    overlayWindow.setPosition(newX, newY);
+  }
+  
+  logger.info(`[main.ts] Overlay window resized to ${finalWidth}x${finalHeight} at position (${newX}, ${newY})`);
+}
+
 // Consolidated and robust version for positioning
 function positionOverlayAtPosition(activatedPosition: string) {
   if (!overlayWindow) {
@@ -272,6 +363,9 @@ function positionOverlayAtPosition(activatedPosition: string) {
     return;
   }
 
+  // First, resize the overlay to current settings
+  resizeOverlayWindow();
+  
   const display = screen.getPrimaryDisplay();
   const workArea = display.workArea; 
   const overlaySizeArray = overlayWindow.getSize(); // Returns [width, height]
@@ -289,18 +383,46 @@ function positionOverlayAtPosition(activatedPosition: string) {
   let y: number = preferredY;
   y = Math.max(workArea.y, Math.min(y, workArea.y + workArea.height - overlayHeight));
 
+  // Dynamic edge padding based on window size to prevent cutoff
+  const edgePadding = Math.max(15, Math.min(30, overlayWidth * 0.02)); // 2% of width, min 15px, max 30px
+  
   switch (activatedPosition) {
-    case 'top-left': x = workArea.x; y = workArea.y; break;
-    case 'top-right': x = workArea.x + workArea.width - overlayWidth; y = workArea.y; break;
-    case 'bottom-left': x = workArea.x; y = workArea.y + workArea.height - overlayHeight; break;
-    case 'bottom-right': x = workArea.x + workArea.width - overlayWidth; y = workArea.y + workArea.height - overlayHeight; break;
-    case 'left-center': x = workArea.x; break;
-    case 'right-center': x = workArea.x + workArea.width - overlayWidth; break;
+    case 'top-left': 
+      x = workArea.x + edgePadding; 
+      y = workArea.y + edgePadding; 
+      break;
+    case 'top-right': 
+      x = workArea.x + workArea.width - overlayWidth - edgePadding; 
+      y = workArea.y + edgePadding; 
+      break;
+    case 'bottom-left': 
+      x = workArea.x + edgePadding; 
+      y = workArea.y + workArea.height - overlayHeight - edgePadding; 
+      break;
+    case 'bottom-right': 
+      x = workArea.x + workArea.width - overlayWidth - edgePadding; 
+      y = workArea.y + workArea.height - overlayHeight - edgePadding; 
+      break;
+    case 'left-center': 
+      x = workArea.x + edgePadding; 
+      // Ensure the overlay doesn't go off-screen vertically
+      y = Math.max(workArea.y + edgePadding, Math.min(y, workArea.y + workArea.height - overlayHeight - edgePadding));
+      break;
+    case 'right-center': 
+      x = workArea.x + workArea.width - overlayWidth - edgePadding; 
+      // Ensure the overlay doesn't go off-screen vertically
+      y = Math.max(workArea.y + edgePadding, Math.min(y, workArea.y + workArea.height - overlayHeight - edgePadding));
+      break;
     default: 
       logger.warn(`[main.ts] Unknown position '${activatedPosition}'. Defaulting to preferred side: ${preferredSide}.`);
-      x = (preferredSide === 'left') ? workArea.x : workArea.x + workArea.width - overlayWidth;
+      x = (preferredSide === 'left') ? workArea.x + edgePadding : workArea.x + workArea.width - overlayWidth - edgePadding;
+      y = Math.max(workArea.y + edgePadding, Math.min(y, workArea.y + workArea.height - overlayHeight - edgePadding));
       break;
   }
+  
+  // Final boundary check to ensure overlay stays within screen bounds
+  x = Math.max(workArea.x + edgePadding, Math.min(x, workArea.x + workArea.width - overlayWidth - edgePadding));
+  y = Math.max(workArea.y + edgePadding, Math.min(y, workArea.y + workArea.height - overlayHeight - edgePadding));
   logger.info(`[main.ts] Positioning overlay at x: ${Math.round(x)}, y: ${Math.round(y)} for position: ${activatedPosition}`);
   overlayWindow.setBounds({ x: Math.round(x), y: Math.round(y), width: overlayWidth, height: overlayHeight });
 }
@@ -323,9 +445,23 @@ function createWindow() {
 function createOverlayWindow() {
   const workArea = screen.getPrimaryDisplay().workArea;
   
+  // Get current settings to calculate window size
+  const settings = dbGetSettings();
+  const gridCols = settings.overlay.gridCols || 2;
+  const gridRows = settings.overlay.gridRows || 3;
+  const nodeWidth = settings.overlay.nodeWidth || 180;
+  const nodeHeight = settings.overlay.nodeHeight || 90;
+  
+  // Calculate window size based on grid settings
+  // Add padding for container margins and gaps between nodes
+  const containerPadding = 40; // 20px each side
+  const nodeGap = 15; // gap between nodes
+  const width = (nodeWidth * gridCols) + (nodeGap * (gridCols - 1)) + containerPadding;
+  const height = (nodeHeight * gridRows) + (nodeGap * (gridRows - 1)) + containerPadding + 60; // extra for section headers
+  
   // Create base options
   const baseOptions = {
-    width: 400, height: 500, 
+    width, height, 
     x: workArea.x + workArea.width, y: workArea.y + 100, // Off-screen initially
     frame: false,
     transparent: true,
@@ -629,6 +765,13 @@ function setupIpcHandlers() {
       if (newSettings.edgeHover) {
         startMouseTracking(currentSettings);
       }
+      
+      // Resize overlay window if overlay settings changed
+      if (newSettings.overlay && overlayWindow) {
+        resizeOverlayWindow();
+        logger.info('[main.ts] Overlay window resized due to settings change');
+      }
+      
        // Send settings:changed to renderers
       if (mainWindow) mainWindow.webContents.send('settings:changed', currentSettings);
       if (overlayWindow) overlayWindow.webContents.send('settings:changed', currentSettings);
@@ -1479,6 +1622,10 @@ app.on('ready', async () => {
   if (process.env.NODE_ENV === 'development') {
     await setupTestStarterChains();
   }
+  
+  // Reset edge hover settings to defaults for testing
+  // Remove this line after testing is complete
+  dbResetEdgeHoverSettings();
   
   createWindow();
   createOverlayWindow(); 

@@ -1,0 +1,83 @@
+/* Override default blue focus/selection colors for dark theme */
+
+/* General focus override */
+*:focus {
+  outline: 1px solid rgba(255, 255, 255, 0.3) !important;
+  outline-offset: 2px;
+}
+
+*:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Text selection */
+*::selection {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+}
+
+/* Form elements */
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+  outline: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Remove blue highlights from dropdowns */
+select {
+  background-color: rgba(30, 30, 30, 0.95) !important;
+  color: #e0e0e0 !important;
+}
+
+select option {
+  background-color: rgba(20, 20, 20, 0.98) !important;
+  color: #e0e0e0 !important;
+}
+
+select option:checked {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+}
+
+select option:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+}
+
+/* Ensure no blue outlines on any interactive elements */
+a:focus,
+.button:focus,
+[role="button"]:focus {
+  outline-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Checkbox and radio styling */
+input[type="checkbox"]:focus,
+input[type="radio"]:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.4) !important;
+  outline-offset: 2px;
+}
+
+/* Remove webkit blue glow */
+input:focus,
+textarea:focus,
+select:focus {
+  -webkit-box-shadow: none !important;
+}
+
+/* Tab focus indicator */
+:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+/* Range slider focus */
+input[type="range"]:focus {
+  outline: none !important;
+}
+
+input[type="range"]:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2) !important;
+}

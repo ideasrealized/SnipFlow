@@ -841,6 +841,13 @@ export function updateSettings(newSettings: Partial<Settings>): void {
   }
 }
 
+// Helper function to reset edge hover settings to defaults
+export function resetEdgeHoverSettings(): void {
+  if (!db) throw new Error("DB not initialized for resetEdgeHoverSettings");
+  logger.info('[DB] Resetting edge hover settings to defaults');
+  upsertSettingStmt.run('edgeHover', JSON.stringify(DEFAULT_EDGE_HOVER_SETTINGS));
+}
+
 export function getPinnedItems(): PinnedItem[] {
   if (!db) throw new Error("DB not initialized for getPinnedItems");
   logger.info('[DB] Fetching pinned items');

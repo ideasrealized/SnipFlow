@@ -112,6 +112,8 @@ export interface OverlaySettings {
   nodeWidth?: number;
   nodeHeight?: number;
   nodeStyle?: 'square' | 'rounded' | 'circle' | 'hexagon';
+  nodeGap?: number;
+  nodeRadius?: number;
   // Performance settings
   animationSpeed?: 'instant' | 'fast' | 'normal' | 'slow';
   preloadContent?: boolean;

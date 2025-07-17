@@ -43,6 +43,10 @@ try {
   require('../assets/styles/global.css');
   console.log('🚀 Global CSS imported successfully');
   
+  console.log('🚀 Attempting to import Tailwind CSS...');
+  require('../styles/globals.css');
+  console.log('🚀 Tailwind CSS imported successfully');
+  
   console.log('🚀 Looking for root element...');
   const rootElement = document.getElementById('root');
   

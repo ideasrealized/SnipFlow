@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ClipboardManagerView from './components/views/ClipboardManagerView';
 import SnippetManagerView from './components/views/SnippetManagerView';
-import SettingsView from './components/views/SettingsView';
+import SettingsView from './components/views/SettingsViewNew';
 import ChainManagerView from './components/ChainManagerView';
 
 const App: React.FC = () => {

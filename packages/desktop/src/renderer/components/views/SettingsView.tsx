@@ -1,37 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import CollapsibleSection from '../CollapsibleSection';
-// Temporarily removed UI imports to debug
-// import { Button } from '../../../components/ui/button';
-// import { Input } from '../../../components/ui/input';
-// import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import OverlayNodePreview from '../../../components/OverlayNodePreview';
 
-interface OverlaySettings {
-  layoutMode: 'grid' | 'compact' | 'vertical' | 'horizontal';
-  gridCols: number;
-  gridRows: number;
-  nodeWidth: number;
-  nodeHeight: number;
-  nodeStyle: 'rounded' | 'square' | 'minimal';
-  animationSpeed: 'instant' | 'fast' | 'normal' | 'slow';
-  theme: 'light' | 'dark' | 'auto';
-  preloadContent: boolean;
-  starterChainLimit: number;
-  showPreviews: boolean;
-  enableChainLinks: boolean;
-}
+import { Settings, OverlaySettings } from '../../../types';
 
-interface Settings {
-  theme: string;
-  autoPaste: boolean;
-  autoFormat: boolean;
-  maxHistory: number;
-  edgeHover: {
-    enabled: boolean;
-    position: string;
-    delay: number;
-    triggerSize: number;
-  };
-  overlay: OverlaySettings;
+// Extended overlay settings for UI controls
+interface ExtendedOverlaySettings extends OverlaySettings {
+  starterChainLimit?: number;
+  showPreviews?: boolean;
+  enableChainLinks?: boolean;
+  layoutMode?: 'grid' | 'compact' | 'vertical' | 'horizontal';
 }
 
 const SettingsView: React.FC = () => {
@@ -41,6 +19,9 @@ const SettingsView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Tab state - moved up to be available throughout component
+  const [activeTab, setActiveTab] = useState<'general' | 'overlay' | 'edge' | 'advanced'>('overlay'); // Default to overlay to show preview
 
   // Local state for form values
   const [autoStart, setAutoStart] = useState(false);
@@ -48,19 +29,21 @@ const SettingsView: React.FC = () => {
   const [shortcutKey, setShortcutKey] = useState('Ctrl+Shift+V');
   
   // Overlay settings
-  const [overlaySettings, setOverlaySettings] = useState<OverlaySettings>({
-    layoutMode: 'grid',
+  const [overlaySettings, setOverlaySettings] = useState<ExtendedOverlaySettings>({
+    theme: 'dark',
+    opacity: 0.98,
+    blur: 10,
     gridCols: 2,
     gridRows: 3,
     nodeWidth: 180,
     nodeHeight: 90,
     nodeStyle: 'rounded',
     animationSpeed: 'fast',
-    theme: 'dark',
     preloadContent: true,
     starterChainLimit: 6,
     showPreviews: true,
     enableChainLinks: true,
+    layoutMode: 'grid',
   });
   
   // Edge hover settings
@@ -98,18 +81,20 @@ const SettingsView: React.FC = () => {
         // Load overlay settings
         if (loadedSettings.overlay) {
           setOverlaySettings({
-            layoutMode: loadedSettings.overlay.layoutMode || 'grid',
+            theme: loadedSettings.overlay.theme || 'dark',
+            opacity: loadedSettings.overlay.opacity || 0.98,
+            blur: loadedSettings.overlay.blur || 10,
             gridCols: loadedSettings.overlay.gridCols || 2,
             gridRows: loadedSettings.overlay.gridRows || 3,
             nodeWidth: loadedSettings.overlay.nodeWidth || 180,
             nodeHeight: loadedSettings.overlay.nodeHeight || 90,
             nodeStyle: loadedSettings.overlay.nodeStyle || 'rounded',
             animationSpeed: loadedSettings.overlay.animationSpeed || 'fast',
-            theme: loadedSettings.overlay.theme || 'dark',
             preloadContent: loadedSettings.overlay.preloadContent ?? true,
-            starterChainLimit: loadedSettings.overlay.starterChainLimit || 6,
-            showPreviews: loadedSettings.overlay.showPreviews ?? true,
-            enableChainLinks: loadedSettings.overlay.enableChainLinks ?? true,
+            starterChainLimit: 6,
+            showPreviews: true,
+            enableChainLinks: true,
+            layoutMode: 'grid',
           });
         }
       }
@@ -126,13 +111,26 @@ const SettingsView: React.FC = () => {
       setSaving(true);
       setError(null);
       
-      const newSettings = {
-        theme,
+      const newSettings: Settings = {
+        theme: theme as 'light' | 'dark' | 'system',
         autoPaste: settings?.autoPaste ?? false,
         autoFormat: settings?.autoFormat ?? false,
         maxHistory: settings?.maxHistory ?? 100,
         edgeHover,
-        overlay: overlaySettings,
+        overlay: {
+          theme: overlaySettings.theme,
+          opacity: overlaySettings.opacity || 0.98,
+          blur: overlaySettings.blur || 10,
+          gridCols: overlaySettings.gridCols || 2,
+          gridRows: overlaySettings.gridRows || 3,
+          nodeWidth: overlaySettings.nodeWidth || 180,
+          nodeHeight: overlaySettings.nodeHeight || 90,
+          nodeStyle: overlaySettings.nodeStyle || 'rounded',
+          nodeGap: overlaySettings.nodeGap || 8,
+          nodeRadius: overlaySettings.nodeRadius || 12,
+          animationSpeed: overlaySettings.animationSpeed || 'fast',
+          preloadContent: overlaySettings.preloadContent ?? true
+        },
       };
       
       console.log('🔧 Saving settings:', JSON.stringify(newSettings, null, 2));
@@ -192,27 +190,114 @@ const SettingsView: React.FC = () => {
 
   console.log('SettingsView render - loaded successfully');
   
+  const handleSettingChange = (key: string, value: any) => {
+    if (key.startsWith('overlay.')) {
+      const overlayKey = key.replace('overlay.', '');
+      setOverlaySettings(prev => ({ ...prev, [overlayKey]: value }));
+    }
+  };
+  
   return (
-    <div className="view-container">
-      <div style={{ 
-        background: 'red', 
-        color: 'white', 
-        padding: '20px', 
-        fontSize: '24px', 
-        textAlign: 'center' as const,
-        border: '3px solid yellow',
-        margin: '20px 0'
-      }}>
-        🚨 SETTINGS VIEW IS RENDERING 🚨
-      </div>
-      <h2>Settings & Debug - LOADED</h2>
+    <div className="view-container" style={{
+      background: 'rgba(20, 20, 20, 0.98)',
+      borderRadius: '12px',
+      padding: '20px',
+      minHeight: '100%',
+      maxHeight: '100vh',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      color: '#e0e0e0'
+    }}>
+      <h2 style={{ color: '#4a90e2', marginBottom: '20px' }}>Settings & Debug</h2>
       
-      <CollapsibleSection 
-        title="General Settings" 
-        icon="⚙️"
-        defaultExpanded={true}
-      >
-        <div className="settings-section">
+      {/* Tab Navigation */}
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        marginBottom: '20px',
+        borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
+        paddingBottom: '8px'
+      }}>
+        <button
+          onClick={() => setActiveTab('general')}
+          style={{
+            padding: '8px 16px',
+            background: activeTab === 'general' ? '#4a90e2' : 'rgba(30, 30, 30, 0.8)',
+            border: 'none',
+            borderRadius: '4px 4px 0 0',
+            color: '#e0e0e0',
+            cursor: 'pointer',
+            fontWeight: activeTab === 'general' ? 'bold' : 'normal',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          ⚙️ General
+        </button>
+        <button
+          onClick={() => setActiveTab('overlay')}
+          style={{
+            padding: '8px 16px',
+            background: activeTab === 'overlay' ? '#4a90e2' : 'rgba(30, 30, 30, 0.8)',
+            border: 'none',
+            borderRadius: '4px 4px 0 0',
+            color: '#e0e0e0',
+            cursor: 'pointer',
+            fontWeight: activeTab === 'overlay' ? 'bold' : 'normal',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          🎨 Overlay Design
+        </button>
+        <button
+          onClick={() => setActiveTab('edge')}
+          style={{
+            padding: '8px 16px',
+            background: activeTab === 'edge' ? '#4a90e2' : 'rgba(30, 30, 30, 0.8)',
+            border: 'none',
+            borderRadius: '4px 4px 0 0',
+            color: '#e0e0e0',
+            cursor: 'pointer',
+            fontWeight: activeTab === 'edge' ? 'bold' : 'normal',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          🖱️ Edge Hover
+        </button>
+        <button
+          onClick={() => setActiveTab('advanced')}
+          style={{
+            padding: '8px 16px',
+            background: activeTab === 'advanced' ? '#4a90e2' : 'rgba(30, 30, 30, 0.8)',
+            border: 'none',
+            borderRadius: '4px 4px 0 0',
+            color: '#e0e0e0',
+            cursor: 'pointer',
+            fontWeight: activeTab === 'advanced' ? 'bold' : 'normal',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          🔧 Advanced
+        </button>
+      </div>
+      
+      {/* Tab Content */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        paddingRight: '8px'
+      }}>
+      
+      {/* General Tab */}
+      {activeTab === 'general' && (
+        <div className="settings-section" style={{
+          background: 'rgba(30, 30, 30, 0.8)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '16px'
+        }}>
           <div className="setting-item">
             <label>
               <input 
@@ -241,189 +326,50 @@ const SettingsView: React.FC = () => {
             />
           </div>
         </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection 
-        title="Diagnostics & Debug" 
-        icon="🔧"
-        defaultExpanded={false}
-      >
-        <div className="settings-section">
-          <button className="button button-primary" onClick={handleExportDiagnostics}>
-            Export Diagnostics
-          </button>
-          <button className="button button-secondary" onClick={handleClearCache}>
-            Clear Cache
-          </button>
-          <button className="button button-danger" onClick={handleResetSettings}>
-            Reset All Settings
-          </button>
-          <div className="setting-item">
-            <p className="settings-info">
-              Version: 0.1.0<br/>
-              Electron: {process.versions.electron}<br/>
-              Node: {process.versions.node}<br/>
-              Chrome: {process.versions.chrome}
-            </p>
-          </div>
+      )}
+      
+      {/* Overlay Design Tab */}
+      {activeTab === 'overlay' && (
+        <div>
+          {/* Node Preview Component */}
+          <OverlayNodePreview 
+            settings={{
+              theme: (settings?.theme || 'dark') as 'light' | 'dark' | 'system',
+              autoPaste: settings?.autoPaste || false,
+              autoFormat: settings?.autoFormat || false,
+              maxHistory: settings?.maxHistory || 100,
+              edgeHover: edgeHover,
+              overlay: {
+                theme: overlaySettings.theme,
+                opacity: overlaySettings.opacity || 0.98,
+                blur: overlaySettings.blur || 10,
+                gridCols: overlaySettings.gridCols || 2,
+                gridRows: overlaySettings.gridRows || 3,
+                nodeWidth: overlaySettings.nodeWidth || 180,
+                nodeHeight: overlaySettings.nodeHeight || 90,
+                nodeStyle: overlaySettings.nodeStyle || 'rounded',
+                nodeGap: overlaySettings.nodeGap || 8,
+                nodeRadius: overlaySettings.nodeRadius || 12,
+                animationSpeed: overlaySettings.animationSpeed || 'fast',
+                preloadContent: overlaySettings.preloadContent ?? true
+              }
+            }}
+            onSettingChange={handleSettingChange}
+          />
         </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection 
-        title="Overlay UI Settings" 
-        icon="🎨"
-        defaultExpanded={true}
-      >
-        <div className="settings-section">
-          <div className="setting-item">
-            <label>Layout Mode:</label>
-            <select 
-              value={overlaySettings.layoutMode} 
-              onChange={(e) => setOverlaySettings({...overlaySettings, layoutMode: e.target.value as any})}
-            >
-              <option value="grid">Grid</option>
-              <option value="compact">Compact</option>
-              <option value="vertical">Vertical</option>
-              <option value="horizontal">Horizontal</option>
-            </select>
-          </div>
+      )}
+      
+      {/* Edge Hover Tab */}
+      {activeTab === 'edge' && (
+        <div className="settings-section" style={{
+          background: 'rgba(30, 30, 30, 0.8)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '16px'
+        }}>
+          <h3 style={{ color: '#4a90e2', marginBottom: '16px' }}>Edge Hover Settings</h3>
           
-          {overlaySettings.layoutMode === 'grid' && (
-            <>
-              <div className="setting-item">
-                <label>Grid Columns:</label>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max="5" 
-                  value={overlaySettings.gridCols} 
-                  onChange={(e) => setOverlaySettings({...overlaySettings, gridCols: parseInt(e.target.value) || 2})}
-                />
-              </div>
-              <div className="setting-item">
-                <label>Grid Rows:</label>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max="5" 
-                  value={overlaySettings.gridRows} 
-                  onChange={(e) => setOverlaySettings({...overlaySettings, gridRows: parseInt(e.target.value) || 3})}
-                />
-              </div>
-            </>
-          )}
-          
-          <div className="setting-item">
-            <label>Node Width:</label>
-            <input 
-              type="number" 
-              min="120" 
-              max="300" 
-              value={overlaySettings.nodeWidth} 
-              onChange={(e) => setOverlaySettings({...overlaySettings, nodeWidth: parseInt(e.target.value) || 180})}
-            />
-          </div>
-          
-          <div className="setting-item">
-            <label>Node Height:</label>
-            <input 
-              type="number" 
-              min="60" 
-              max="150" 
-              value={overlaySettings.nodeHeight} 
-              onChange={(e) => setOverlaySettings({...overlaySettings, nodeHeight: parseInt(e.target.value) || 90})}
-            />
-          </div>
-          
-          <div className="setting-item">
-            <label>Node Style:</label>
-            <select 
-              value={overlaySettings.nodeStyle} 
-              onChange={(e) => setOverlaySettings({...overlaySettings, nodeStyle: e.target.value as any})}
-            >
-              <option value="rounded">Rounded</option>
-              <option value="square">Square</option>
-              <option value="minimal">Minimal</option>
-            </select>
-          </div>
-          
-          <div className="setting-item">
-            <label>Animation Speed:</label>
-            <select 
-              value={overlaySettings.animationSpeed} 
-              onChange={(e) => setOverlaySettings({...overlaySettings, animationSpeed: e.target.value as any})}
-            >
-              <option value="instant">Instant</option>
-              <option value="fast">Fast</option>
-              <option value="normal">Normal</option>
-              <option value="slow">Slow</option>
-            </select>
-          </div>
-          
-          <div className="setting-item">
-            <label>Overlay Theme:</label>
-            <select 
-              value={overlaySettings.theme} 
-              onChange={(e) => setOverlaySettings({...overlaySettings, theme: e.target.value as any})}
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="auto">Auto (System)</option>
-            </select>
-          </div>
-          
-          <div className="setting-item">
-            <label>Starter Chain Limit:</label>
-            <input 
-              type="number" 
-              min="3" 
-              max="12" 
-              value={overlaySettings.starterChainLimit} 
-              onChange={(e) => setOverlaySettings({...overlaySettings, starterChainLimit: parseInt(e.target.value) || 6})}
-            />
-          </div>
-          
-          <div className="setting-item">
-            <label>
-              <input 
-                type="checkbox" 
-                checked={overlaySettings.preloadContent} 
-                onChange={(e) => setOverlaySettings({...overlaySettings, preloadContent: e.target.checked})}
-              />
-              Preload Content
-            </label>
-          </div>
-          
-          <div className="setting-item">
-            <label>
-              <input 
-                type="checkbox" 
-                checked={overlaySettings.showPreviews} 
-                onChange={(e) => setOverlaySettings({...overlaySettings, showPreviews: e.target.checked})}
-              />
-              Show Chain Previews
-            </label>
-          </div>
-          
-          <div className="setting-item">
-            <label>
-              <input 
-                type="checkbox" 
-                checked={overlaySettings.enableChainLinks} 
-                onChange={(e) => setOverlaySettings({...overlaySettings, enableChainLinks: e.target.checked})}
-              />
-              Enable Chain Links
-            </label>
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection 
-        title="Edge Hover Settings" 
-        icon="🎯"
-        defaultExpanded={false}
-      >
-        <div className="settings-section">
           <div className="setting-item">
             <label>
               <input 
@@ -488,40 +434,164 @@ const SettingsView: React.FC = () => {
             />
           </div>
         </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection 
-        title="Data Management" 
-        icon="💾"
-        defaultExpanded={false}
-      >
-        <div className="settings-section">
-          <div className="setting-item">
-            <button className="button button-secondary">
-              Export All Data
-            </button>
-          </div>
-          <div className="setting-item">
-            <button className="button button-secondary">
-              Import Data
-            </button>
-          </div>
-          <div className="setting-item">
-            <button className="button button-danger">
-              Clear All Snippets
-            </button>
-          </div>
-        </div>
-      </CollapsibleSection>
+      )}
       
-      {/* Save Settings Section */}
-      <div className="settings-section" style={{ marginTop: '20px', padding: '20px', border: '1px solid #444', borderRadius: '8px' }}>
-        <div className="setting-item">
+      {/* Advanced Tab */}
+      {activeTab === 'advanced' && (
+        <div>
+          <div className="settings-section" style={{
+            background: 'rgba(30, 30, 30, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '16px'
+          }}>
+            <h3 style={{ color: '#4a90e2', marginBottom: '16px' }}>Advanced Settings</h3>
+            
+            <div className="setting-item">
+              <label>
+                <input 
+                  type="checkbox" 
+                  checked={edgeHover.enabled} 
+                  onChange={(e) => setEdgeHover({...edgeHover, enabled: e.target.checked})}
+                />
+                Enable Edge Hover
+              </label>
+            </div>
+            
+            {/* Test button to manually show overlay */}
+            <div className="setting-item">
+              <button 
+                className="button button-secondary" 
+                onClick={() => {
+                  console.log('🔧 Testing overlay show...');
+                  window.api.send('test-show-overlay');
+                }}
+                style={{ marginBottom: '10px' }}
+              >
+                Test Show Overlay
+              </button>
+            </div>
+            
+            <div className="setting-item">
+              <label>Edge Position:</label>
+              <select 
+                value={edgeHover.position} 
+                onChange={(e) => setEdgeHover({...edgeHover, position: e.target.value})}
+              >
+                <option value="left-center">Left Center</option>
+                <option value="right-center">Right Center</option>
+                <option value="top-center">Top Center</option>
+                <option value="bottom-center">Bottom Center</option>
+                <option value="top-left">Top Left</option>
+                <option value="top-right">Top Right</option>
+                <option value="bottom-left">Bottom Left</option>
+                <option value="bottom-right">Bottom Right</option>
+              </select>
+            </div>
+            
+            <div className="setting-item">
+              <label>Hover Delay (ms):</label>
+              <input 
+                type="number" 
+                min="0" 
+                max="2000" 
+                value={edgeHover.delay} 
+                onChange={(e) => setEdgeHover({...edgeHover, delay: parseInt(e.target.value) || 662})}
+              />
+            </div>
+            
+            <div className="setting-item">
+              <label>Hover Area Size:</label>
+              <input 
+                type="number" 
+                min="5" 
+                max="100" 
+                value={edgeHover.triggerSize} 
+                onChange={(e) => setEdgeHover({...edgeHover, triggerSize: parseInt(e.target.value) || 50})}
+              />
+            </div>
+          </div>
+          
+          <CollapsibleSection 
+            title="Diagnostics & Debug" 
+            icon="🔧"
+            defaultExpanded={false}
+          >
+            <div className="settings-section">
+              <button className="button button-primary" onClick={handleExportDiagnostics}>
+                Export Diagnostics
+              </button>
+              <button className="button button-secondary" onClick={handleClearCache}>
+                Clear Cache
+              </button>
+              <button className="button button-danger" onClick={handleResetSettings}>
+                Reset All Settings
+              </button>
+              <div className="setting-item">
+                <p className="settings-info">
+                  Version: 0.1.0<br/>
+                  Electron: {process.versions.electron}<br/>
+                  Node: {process.versions.node}<br/>
+                  Chrome: {process.versions.chrome}
+                </p>
+              </div>
+            </div>
+          </CollapsibleSection>
+          
+          <CollapsibleSection 
+            title="Data Management" 
+            icon="💾"
+            defaultExpanded={false}
+          >
+            <div className="settings-section">
+              <div className="setting-item">
+                <button className="button button-secondary">
+                  Export All Data
+                </button>
+              </div>
+              <div className="setting-item">
+                <button className="button button-secondary">
+                  Import Data
+                </button>
+              </div>
+              <div className="setting-item">
+                <button className="button button-danger">
+                  Clear All Snippets
+                </button>
+              </div>
+            </div>
+          </CollapsibleSection>
+        </div>
+      )}
+      </div>
+      
+      {/* Save Settings Bar - Always visible */}
+      <div style={{
+        marginTop: '20px',
+        padding: '16px',
+        background: 'rgba(30, 30, 30, 0.9)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '8px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button 
             className="button button-primary" 
             onClick={saveSettings}
             disabled={saving}
-            style={{ marginRight: '10px' }}
+            style={{
+              padding: '8px 20px',
+              background: saving ? '#2d5a8e' : '#4a90e2',
+              border: 'none',
+              borderRadius: '4px',
+              color: 'white',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              transition: 'all 0.2s ease'
+            }}
           >
             {saving ? 'Saving...' : 'Save Settings'}
           </button>
@@ -530,22 +600,33 @@ const SettingsView: React.FC = () => {
             className="button button-secondary" 
             onClick={loadSettings}
             disabled={loading}
+            style={{
+              padding: '8px 20px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '4px',
+              color: '#e0e0e0',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease'
+            }}
           >
             {loading ? 'Loading...' : 'Reload Settings'}
           </button>
         </div>
         
-        {error && (
-          <div className="error-message" style={{ color: '#ff6b6b', marginTop: '10px' }}>
-            {error}
-          </div>
-        )}
-        
-        {saving && (
-          <div className="success-message" style={{ color: '#51cf66', marginTop: '10px' }}>
-            Settings saved successfully!
-          </div>
-        )}
+        <div style={{ flex: 1, marginLeft: '20px' }}>
+          {error && (
+            <div style={{ color: '#ff6b6b' }}>
+              ⚠️ {error}
+            </div>
+          )}
+          
+          {saving && !error && (
+            <div style={{ color: '#51cf66' }}>
+              ✅ Settings saved successfully!
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

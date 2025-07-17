@@ -1646,6 +1646,12 @@ if (overlayApi && typeof overlayApi.on === 'function' && typeof overlayApi.send 
                 document.documentElement.style.setProperty('--node-style', overlaySettings.nodeStyle);
                 document.body.setAttribute('data-node-style', overlaySettings.nodeStyle);
             }
+            if (overlaySettings.nodeGap !== undefined) {
+                document.documentElement.style.setProperty('--grid-gap', overlaySettings.nodeGap + 'px');
+            }
+            if (overlaySettings.nodeRadius !== undefined) {
+                document.documentElement.style.setProperty('--node-radius', overlaySettings.nodeRadius + 'px');
+            }
             if (overlaySettings.animationSpeed !== undefined) {
                 const speedValue = overlaySettings.animationSpeed === 'instant' ? '0s' : 
                     overlaySettings.animationSpeed === 'fast' ? '0.15s' : 
