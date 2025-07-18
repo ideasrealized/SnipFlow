@@ -75,4 +75,4 @@ const ChainOptionItem: React.FC<ChainOptionItemProps> = ({ option, onOptionChang
   );
 };
 
-export default ChainOptionItem; 
+export default React.memo(ChainOptionItem);

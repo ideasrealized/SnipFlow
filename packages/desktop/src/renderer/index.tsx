@@ -47,6 +47,10 @@ try {
   require('../styles/globals.css');
   console.log('🚀 Tailwind CSS imported successfully');
   
+  // Apply dark mode class to body for Tailwind
+  document.body.classList.add('dark');
+  console.log('🚀 Dark mode class added to body');
+  
   console.log('🚀 Looking for root element...');
   const rootElement = document.getElementById('root');
   

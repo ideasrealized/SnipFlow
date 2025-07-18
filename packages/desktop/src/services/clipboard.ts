@@ -7,10 +7,12 @@ let interval: NodeJS.Timeout | null = null;
 
 export function startClipboardMonitor() {
   if (interval) return;
+  logger.info('[clipboard] Starting clipboard monitor');
   interval = setInterval(() => {
     try {
       const text = clipboard.readText();
       if (text && text !== last) {
+        logger.info(`[clipboard] New clipboard text detected: ${text.substring(0, 50)}...`);
         db.addClipboardEntry(text);
         last = text;
       }

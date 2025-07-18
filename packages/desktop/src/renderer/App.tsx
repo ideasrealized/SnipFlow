@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
-import ClipboardManagerView from './components/views/ClipboardManagerView';
-import SnippetManagerView from './components/views/SnippetManagerView';
-import SettingsView from './components/views/SettingsViewNew';
-import ChainManagerView from './components/ChainManagerView';
+
+// Lazy load view components for better performance
+const ClipboardManagerView = lazy(() => import('./components/views/ClipboardManagerView'));
+const SnippetManagerView = lazy(() => import('./components/views/SnippetManagerView'));
+const SettingsView = lazy(() => import('./components/views/SettingsViewPro'));
+const ChainManagerView = lazy(() => import('./components/ChainManagerView'));
 
 const App: React.FC = () => {
   console.log('🚀 App component is loading!');
@@ -11,7 +13,8 @@ const App: React.FC = () => {
   console.log('🚀 App component currentView initialized to:', currentView);
 
   useEffect(() => {
-    const handleNavigation = (view: string) => {
+    const handleNavigation = (...args: unknown[]) => {
+      const view = args[0] as string;
       console.log('Navigation event received:', view);
       setCurrentView(view);
     };
@@ -84,7 +87,16 @@ const App: React.FC = () => {
         }}>
           Current View: {currentView}
         </div>
-        {viewToRender}
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-full">
+            <div className="text-gray-400">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mx-auto mb-4"></div>
+              <p>Loading...</p>
+            </div>
+          </div>
+        }>
+          {viewToRender}
+        </Suspense>
       </div>
     </div>
   );

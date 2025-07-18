@@ -252,4 +252,4 @@ const ChainCard: React.FC<ChainCardProps> = ({
   );
 };
 
-export default ChainCard; 
+export default React.memo(ChainCard);

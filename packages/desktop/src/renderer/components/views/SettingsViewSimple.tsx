@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Settings } from '../../../types';
 
 const SettingsViewSimple: React.FC = () => {
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [edgeHoverEnabled, setEdgeHoverEnabled] = useState(true);
 
@@ -11,7 +12,7 @@ const SettingsViewSimple: React.FC = () => {
 
   const loadSettings = async () => {
     try {
-      const loadedSettings = await window.api.invoke('get-settings');
+      const loadedSettings = await window.api.invoke('get-settings') as Settings;
       setSettings(loadedSettings);
       setEdgeHoverEnabled(loadedSettings?.edgeHover?.enabled ?? true);
       setLoading(false);
@@ -27,10 +28,10 @@ const SettingsViewSimple: React.FC = () => {
       const result = await window.api.invoke('save-settings', {
         ...settings,
         edgeHover: {
-          ...settings.edgeHover,
+          ...settings!.edgeHover,
           enabled: newValue
         }
-      });
+      }) as { success: boolean };
       if (result.success) {
         setEdgeHoverEnabled(newValue);
         await loadSettings();

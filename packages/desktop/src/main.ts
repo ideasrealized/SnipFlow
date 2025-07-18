@@ -38,6 +38,7 @@ import { logger } from './logger';
 import { processTextWithChain } from './services/chainService';
 import { exportDiagnostics } from './diagnostics';
 import { setupTestStarterChains } from './test-data-setup';
+import { startClipboardMonitor, stopClipboardMonitor } from './services/clipboard';
 import {
   type Settings, 
   type OverlaySettings, 
@@ -595,18 +596,35 @@ function createSystemTray() {
         {
           label: 'Show Main Window',
           click: () => {
-            if (mainWindow) {
+            logger.info('[main.ts] Tray: Show Main Window clicked');
+            if (mainWindow && !mainWindow.isDestroyed()) {
               mainWindow.show();
               mainWindow.focus();
+              logger.info('[main.ts] Tray: Main window shown and focused');
+            } else {
+              logger.info('[main.ts] Tray: Main window not available, creating new one');
+              createWindow();
+              if (mainWindow) {
+                mainWindow.show();
+                mainWindow.focus();
+              }
             }
           }
         },
         {
           label: overlayWindow?.isVisible() ? 'Hide Overlay' : 'Show Overlay',
           click: () => {
+            logger.info('[main.ts] Tray: Toggle overlay clicked');
+            if (!overlayWindow || overlayWindow.isDestroyed()) {
+              logger.info('[main.ts] Tray: Overlay window not available, creating new one');
+              createOverlayWindow();
+            }
+            
             if (overlayWindow?.isVisible()) {
+              logger.info('[main.ts] Tray: Hiding overlay');
               hideOverlay('tray-toggle');
             } else {
+              logger.info('[main.ts] Tray: Showing overlay at left-center');
               // Show overlay at default position
               positionOverlayAtPosition('left-center');
               if (overlayWindow) {
@@ -671,11 +689,27 @@ function createSystemTray() {
         {
           label: 'Settings',
           click: () => {
-            if (mainWindow) {
+            logger.info('[main.ts] Tray: Settings clicked');
+            if (mainWindow && !mainWindow.isDestroyed()) {
               mainWindow.show();
               mainWindow.focus();
               // Send navigation event to main window
               mainWindow.webContents.send('navigate-to-settings');
+              logger.info('[main.ts] Tray: Main window shown, sending navigate-to-settings');
+            } else {
+              logger.info('[main.ts] Tray: Main window not available, creating new one');
+              createWindow();
+              // Wait for window to be ready before sending navigation event
+              if (mainWindow) {
+                mainWindow.once('ready-to-show', () => {
+                  mainWindow?.show();
+                  mainWindow?.focus();
+                  setTimeout(() => {
+                    mainWindow?.webContents.send('navigate-to-settings');
+                    logger.info('[main.ts] Tray: Sent navigate-to-settings after window ready');
+                  }, 100);
+                });
+              }
             }
           }
         },
@@ -1631,6 +1665,11 @@ app.on('ready', async () => {
   createOverlayWindow(); 
   createSystemTray();
   setupIpcHandlers();
+  
+  // Start clipboard monitoring
+  startClipboardMonitor();
+  logger.info('[main.ts] Clipboard monitoring started.');
+  
   logger.info('[main.ts] App ready, IPCs registered.');
   const s = dbGetSettings();
   if (s.edgeHover.enabled) startMouseTracking(s); 
@@ -1646,6 +1685,8 @@ app.on('will-quit', () => {
     tray.destroy();
     tray = null;
   }
+  stopClipboardMonitor();
+  logger.info('[main.ts] Clipboard monitoring stopped.');
   closeDb(); 
 });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

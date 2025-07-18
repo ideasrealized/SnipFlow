@@ -68,4 +68,4 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activeView }) => {
   );
 };
 
-export default Sidebar; 
+export default React.memo(Sidebar);

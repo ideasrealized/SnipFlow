@@ -87,4 +87,4 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   );
 };
 
-export default CollapsibleSection;
+export default React.memo(CollapsibleSection);

@@ -9,9 +9,9 @@ export interface Snippet {
 }
 
 export interface GenericApi {
-  send: (channel: string, ...args: any[]) => void;
-  on: (channel: string, listener: (...args: any[]) => void) => (() => void) | undefined;
-  invoke: (channel: string, ...args: any[]) => Promise<any>;
+  send: (channel: string, ...args: unknown[]) => void;
+  on: (channel: string, listener: (...args: unknown[]) => void) => (() => void) | undefined;
+  invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
 }
 
 export interface SnippetApi {
@@ -62,7 +62,7 @@ export interface EventsApi {
   onOverlayShow: (callback: () => void) => void;
   onOverlayHide: (callback: () => void) => void;
   notifyOverlayHidden: () => void;
-  onThemeChanged: (callback: (event: any, theme: 'light' | 'dark' | 'system') => void) => void;
+  onThemeChanged: (callback: (event: unknown, theme: 'light' | 'dark' | 'system') => void) => void;
 }
 
 export interface ChainOption {

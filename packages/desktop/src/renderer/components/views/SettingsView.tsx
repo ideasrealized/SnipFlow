@@ -62,7 +62,7 @@ const SettingsView: React.FC = () => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const loadedSettings = await window.api.invoke('get-settings');
+      const loadedSettings = await window.api.invoke('get-settings') as Settings;
       
       if (loadedSettings) {
         setSettings(loadedSettings);
@@ -134,7 +134,7 @@ const SettingsView: React.FC = () => {
       };
       
       console.log('🔧 Saving settings:', JSON.stringify(newSettings, null, 2));
-      const result = await window.api.invoke('save-settings', newSettings);
+      const result = await window.api.invoke('save-settings', newSettings) as { success: boolean; error?: string };
       console.log('🔧 Save settings result:', result);
       
       if (result.success) {
@@ -198,84 +198,48 @@ const SettingsView: React.FC = () => {
   };
   
   return (
-    <div className="view-container" style={{
-      background: 'rgba(20, 20, 20, 0.98)',
-      borderRadius: '12px',
-      padding: '20px',
-      minHeight: '100%',
-      maxHeight: '100vh',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      color: '#e0e0e0'
-    }}>
-      <h2 style={{ color: '#4a90e2', marginBottom: '20px' }}>Settings & Debug</h2>
+    <div className="view-container bg-gray-900/98 rounded-xl p-5 min-h-full max-h-screen overflow-hidden flex flex-col text-gray-200">
+      <h2 className="text-blue-500 mb-5">Settings & Debug</h2>
       
       {/* Tab Navigation */}
-      <div style={{
-        display: 'flex',
-        gap: '8px',
-        marginBottom: '20px',
-        borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
-        paddingBottom: '8px'
-      }}>
+      <div className="flex gap-2 mb-5 border-b-2 border-white/10 pb-2">
         <button
           onClick={() => setActiveTab('general')}
-          style={{
-            padding: '8px 16px',
-            background: activeTab === 'general' ? '#4a90e2' : 'rgba(30, 30, 30, 0.8)',
-            border: 'none',
-            borderRadius: '4px 4px 0 0',
-            color: '#e0e0e0',
-            cursor: 'pointer',
-            fontWeight: activeTab === 'general' ? 'bold' : 'normal',
-            transition: 'all 0.2s ease'
-          }}
+          className={`px-4 py-2 rounded-t border-none text-gray-200 cursor-pointer transition-all duration-200 ${
+            activeTab === 'general' 
+              ? 'bg-blue-500 font-bold' 
+              : 'bg-gray-800/80 font-normal hover:bg-gray-700/80'
+          }`}
         >
           ⚙️ General
         </button>
         <button
           onClick={() => setActiveTab('overlay')}
-          style={{
-            padding: '8px 16px',
-            background: activeTab === 'overlay' ? '#4a90e2' : 'rgba(30, 30, 30, 0.8)',
-            border: 'none',
-            borderRadius: '4px 4px 0 0',
-            color: '#e0e0e0',
-            cursor: 'pointer',
-            fontWeight: activeTab === 'overlay' ? 'bold' : 'normal',
-            transition: 'all 0.2s ease'
-          }}
+          className={`px-4 py-2 rounded-t border-none text-gray-200 cursor-pointer transition-all duration-200 ${
+            activeTab === 'overlay' 
+              ? 'bg-blue-500 font-bold' 
+              : 'bg-gray-800/80 font-normal hover:bg-gray-700/80'
+          }`}
         >
           🎨 Overlay Design
         </button>
         <button
           onClick={() => setActiveTab('edge')}
-          style={{
-            padding: '8px 16px',
-            background: activeTab === 'edge' ? '#4a90e2' : 'rgba(30, 30, 30, 0.8)',
-            border: 'none',
-            borderRadius: '4px 4px 0 0',
-            color: '#e0e0e0',
-            cursor: 'pointer',
-            fontWeight: activeTab === 'edge' ? 'bold' : 'normal',
-            transition: 'all 0.2s ease'
-          }}
+          className={`px-4 py-2 rounded-t border-none text-gray-200 cursor-pointer transition-all duration-200 ${
+            activeTab === 'edge' 
+              ? 'bg-blue-500 font-bold' 
+              : 'bg-gray-800/80 font-normal hover:bg-gray-700/80'
+          }`}
         >
           🖱️ Edge Hover
         </button>
         <button
           onClick={() => setActiveTab('advanced')}
-          style={{
-            padding: '8px 16px',
-            background: activeTab === 'advanced' ? '#4a90e2' : 'rgba(30, 30, 30, 0.8)',
-            border: 'none',
-            borderRadius: '4px 4px 0 0',
-            color: '#e0e0e0',
-            cursor: 'pointer',
-            fontWeight: activeTab === 'advanced' ? 'bold' : 'normal',
-            transition: 'all 0.2s ease'
-          }}
+          className={`px-4 py-2 rounded-t border-none text-gray-200 cursor-pointer transition-all duration-200 ${
+            activeTab === 'advanced' 
+              ? 'bg-blue-500 font-bold' 
+              : 'bg-gray-800/80 font-normal hover:bg-gray-700/80'
+          }`}
         >
           🔧 Advanced
         </button>

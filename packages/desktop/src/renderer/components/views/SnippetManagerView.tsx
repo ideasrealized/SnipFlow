@@ -17,11 +17,11 @@ const SnippetManagerView: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const fetchedSnippets = await window.api.invoke('list-snippets');
+      const fetchedSnippets = await window.api.invoke('list-snippets') as Snippet[];
       setSnippets(fetchedSnippets || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching snippets:', err);
-      setError(`Failed to fetch snippets: ${err.message || 'Unknown error'}`);
+      setError(`Failed to fetch snippets: ${err instanceof Error ? err.message : 'Unknown error'}`);
       setSnippets([]); // Clear snippets on error
     } finally {
       setIsLoading(false);
@@ -40,9 +40,9 @@ const SnippetManagerView: React.FC = () => {
       await window.api.invoke('create-snippet', newSnippetContent);
       setNewSnippetContent('');
       fetchSnippets(); // Refresh the list
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating snippet:', err);
-      setError(`Failed to create snippet: ${err.message || 'Unknown error'}`);
+      setError(`Failed to create snippet: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -58,9 +58,9 @@ const SnippetManagerView: React.FC = () => {
       await window.api.invoke('update-snippet', editingSnippet.id, editedContent);
       setEditingSnippet(null);
       fetchSnippets();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error updating snippet:', err);
-      setError(`Failed to update snippet: ${err.message || 'Unknown error'}`);
+      setError(`Failed to update snippet: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -71,9 +71,9 @@ const SnippetManagerView: React.FC = () => {
       await window.api.invoke('delete-snippet', snippetToDelete.id);
       setSnippetToDelete(null);
       fetchSnippets();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error deleting snippet:', err);
-      setError(`Failed to delete snippet: ${err.message || 'Unknown error'}`);
+      setError(`Failed to delete snippet: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -93,9 +93,9 @@ const SnippetManagerView: React.FC = () => {
     try {
       await window.api.invoke('insert-snippet', content);
       console.info('Snippet content insertion requested');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to insert snippet:', err);
-      setError(`Failed to insert snippet: ${err.message || 'Unknown error'}`);
+      setError(`Failed to insert snippet: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
